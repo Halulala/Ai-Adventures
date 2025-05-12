@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dynamic_height_grid_view/dynamic_height_grid_view.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -10,6 +11,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 1;
   String selectedFilter = 'for you';
+  bool isSearching = true;  // La ricerca è sempre attiva ora
+  final TextEditingController _searchController = TextEditingController();
 
   final List<Map<String, String>> characters = List.generate(6, (index) {
     return {
@@ -27,141 +30,156 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  Widget _buildFilterButton(String filter) {
+    final isSelected = filter == selectedFilter;
+
+    return GestureDetector(
+      onTap: () => setState(() => selectedFilter = filter),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 400),
+        padding: const EdgeInsets.symmetric(horizontal: 38, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white24 : Colors.transparent,
+          borderRadius: BorderRadius.circular(50),
+        ),
+        child: Text(
+          filter.toUpperCase(),
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? Colors.yellow : Colors.white70,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCharacterCard(int index) {
+    final item = characters[index];
+
+    return Transform.translate(
+      offset: Offset(0, 0),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                child: Opacity(
+                  opacity: 0.9,
+                  child: Image.asset(
+                    item['image']!,
+                    height: 160,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(14.0),
+                child: Text(
+                  '${item['title']}\n${item['description']}',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Colors.white70,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      child: Column(
+        children: [
+          // Search bar fissa in cima
+          TextField(
+            controller: _searchController,
+            autofocus: true,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Search...',
+              hintStyle: const TextStyle(color: Colors.white54),
+              filled: true,
+              fillColor: Colors.white12,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: 48),
+          // Filtri sotto la search bar
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                ...filters.map((f) => Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: _buildFilterButton(f),
+                )),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const backgroundStart = Color(0xFF332E2E);
     const backgroundMid = Color(0xFF2D2424);
     const backgroundEnd = Color(0xFF1E1B1B);
-    const titleYellow = Color(0xFFFFEB3B);
-    const borderWhite = Color(0xFFEFEFEF);
-    const borderGrey = Color(0xFFB0B0B0);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text(
-          'AI & ADVENTURES',
-          style: TextStyle(
-            fontSize: 22.0,
-            fontWeight: FontWeight.bold,
-            color: titleYellow,
-            letterSpacing: 1.5,
-            shadows: [
-              Shadow(blurRadius: 4, color: Colors.black, offset: Offset(2, 2)),
-            ],
-          ),
-        ),
-        centerTitle: true,
+        toolbarHeight: 10,
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
       body: Container(
+        padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [backgroundStart, backgroundMid, backgroundEnd],
+
           ),
         ),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.only(top: 48.0, left: 16.0, right: 16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Filter buttons
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: filters.map((filter) {
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          selectedFilter = filter;
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.white54),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          filter.toUpperCase(),
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-
-                const SizedBox(height: 20),
-
-                // Characters grid in staggered layout
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: (characters.length / 2).ceil(),
-                    padding: const EdgeInsets.only(bottom: 80),
-                    itemBuilder: (context, rowIndex) {
-                      final isOffset = rowIndex % 2 == 1;
-                      final items = characters.skip(rowIndex * 2).take(2).toList();
-
-                      return Padding(
-                        padding: EdgeInsets.only(
-                          bottom: 16.0,
-                          left: isOffset ? 32.0 : 0,
-                          right: isOffset ? 0 : 32.0,
-                        ),
-                        child: Row(
-                          children: items.map((item) {
-                            return Expanded(
-                              child: Container(
-                                margin: const EdgeInsets.symmetric(horizontal: 8),
-                                decoration: BoxDecoration(
-                                  border: Border(
-                                    top: BorderSide(color: borderWhite, width: 2),
-                                    left: BorderSide(color: borderGrey, width: 2),
-                                    right: BorderSide(color: borderWhite, width: 2),
-                                    bottom: BorderSide(color: borderGrey, width: 2),
-                                  ),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-                                      child: Image.asset(
-                                        item['image']!,
-                                        height: 150,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.all(6.0),
-                                      child: Text(
-                                        '${item['title']}\n${item['description']}',
-                                        style: const TextStyle(
-                                          fontSize: 9,
-                                          color: Colors.white,
-                                          height: 1.3,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      );
-                    },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildTopBar(),
+              const SizedBox(height: 0),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: DynamicHeightGridView(
+                    itemCount: characters.length,
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 20,
+                    mainAxisSpacing: 10,
+                    builder: (ctx, index) => _buildCharacterCard(index),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -172,18 +190,9 @@ class _HomePageState extends State<HomePage> {
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Options',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people_alt),
-            label: 'Party',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.explore),
-            label: 'Explore',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Options'),
+          BottomNavigationBarItem(icon: Icon(Icons.people_alt), label: 'Party'),
+          BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'Explore'),
         ],
       ),
     );
