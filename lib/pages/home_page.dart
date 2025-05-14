@@ -36,19 +36,42 @@ class _HomePageState extends State<HomePage> {
     return GestureDetector(
       onTap: () => setState(() => selectedFilter = filter),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 400),
-        padding: const EdgeInsets.symmetric(horizontal: 38, vertical: 12),
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 27, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white24 : Colors.transparent,
-          borderRadius: BorderRadius.circular(50),
+          color: isSelected ? Colors.white10 : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
         ),
-        child: Text(
-          filter.toUpperCase(),
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: isSelected ? Colors.yellow : Colors.white70,
+        child: TweenAnimationBuilder<double>(
+          tween: Tween<double>(
+            begin: 0.8,
+            end: isSelected ? 1.1 : 0.9,
           ),
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+          builder: (context, scale, child) {
+            return Transform.scale(
+              scale: scale,
+              child: TweenAnimationBuilder<Color?>(
+                tween: ColorTween(
+                  begin: Colors.white70,
+                  end: isSelected ? Colors.yellow : Colors.white70,
+                ),
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                builder: (context, color, _) {
+                  return Text(
+                    filter.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                      color: color,
+                    ),
+                  );
+                },
+              ),
+            );
+          },
         ),
       ),
     );
@@ -57,42 +80,49 @@ class _HomePageState extends State<HomePage> {
   Widget _buildCharacterCard(int index) {
     final item = characters[index];
 
-    return Transform.translate(
-      offset: Offset(0, 0),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                child: Opacity(
-                  opacity: 0.9,
-                  child: Image.asset(
-                    item['image']!,
-                    height: 160,
-                    fit: BoxFit.cover,
+    return Padding(
+      padding: const EdgeInsets.all(4.0),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(6),
+        child: Stack(
+          children: [
+            // Immagine di sfondo
+            Image.asset(
+              item['image']!,
+              height: 200,
+              width: double.infinity,
+              fit: BoxFit.cover,
+            ),
+
+            // Sfondo sfumato dietro il testo (opzionale)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.7),
+                    ],
                   ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(14.0),
                 child: Text(
                   '${item['title']}\n${item['description']}',
                   style: const TextStyle(
                     fontSize: 10,
-                    color: Colors.white70,
+                    color: Colors.yellow,
                     height: 1.4,
                   ),
                   textAlign: TextAlign.center,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -100,36 +130,35 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildTopBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      padding: const EdgeInsets.fromLTRB(18,2,18,10),
       child: Column(
         children: [
           // Search bar fissa in cima
           TextField(
             controller: _searchController,
-            autofocus: true,
+            autofocus: false,
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
               hintText: 'Search...',
-              hintStyle: const TextStyle(color: Colors.white54),
+              hintStyle: const TextStyle(color: Colors.white60),
               filled: true,
-              fillColor: Colors.white12,
+              fillColor: Colors.white10,
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(6),
                 borderSide: BorderSide.none,
               ),
             ),
           ),
-          const SizedBox(height: 48),
+          const SizedBox(height: 10),
           // Filtri sotto la search bar
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                ...filters.map((f) => Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: _buildFilterButton(f),
-                )),
+                ...filters.map((f) =>
+                _buildFilterButton(f),
+                ),
               ],
             ),
           ),
@@ -140,8 +169,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    const backgroundStart = Color(0xFF332E2E);
-    const backgroundMid = Color(0xFF2D2424);
+    const backgroundStart = Color(0xFF1E1B1B);
+    const backgroundMid = Color(0xFF1E1B1B);
     const backgroundEnd = Color(0xFF1E1B1B);
 
     return Scaffold(
@@ -152,7 +181,7 @@ class _HomePageState extends State<HomePage> {
         elevation: 0,
       ),
       body: Container(
-        padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+        padding: const EdgeInsets.fromLTRB(4, 4, 4, 5),
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
@@ -182,18 +211,6 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: backgroundEnd,
-        selectedItemColor: Colors.amberAccent,
-        unselectedItemColor: Colors.white70,
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Options'),
-          BottomNavigationBarItem(icon: Icon(Icons.people_alt), label: 'Party'),
-          BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'Explore'),
-        ],
       ),
     );
   }
