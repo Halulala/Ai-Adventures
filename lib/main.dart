@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:progetto/pages/home_page.dart';
+import 'package:progetto/pages/explore_page.dart';
+import 'package:progetto/pages/all_chats_page.dart';
+
 import 'package:water_drop_nav_bar/water_drop_nav_bar.dart';
 
 void main() {
@@ -39,9 +41,9 @@ class _MainScreenState extends State<MainScreen> {
   final PageController _pageController = PageController();
 
   final List<Widget> _pages = const [
-    HomePage(),
-    Center(child: Text("Chat Page")),
-    Center(child: Text("Settings Page")),
+    ExplorePage(),
+    AllChatsPage(),
+    //
   ];
 
   @override
@@ -53,8 +55,10 @@ class _MainScreenState extends State<MainScreen> {
         children: _pages,
       ),
       bottomNavigationBar: WaterDropNavBar(
+        bottomPadding: 12,
+        iconSize: 32,
         backgroundColor: const Color(0xFF1E1B1B),
-        waterDropColor: Colors.amberAccent,
+        waterDropColor: Color(0xFFB22222), // FireBrick // Dark Red (Blood Red)
         selectedIndex: selectedIndex,
         onItemSelected: (index) {
           setState(() {
