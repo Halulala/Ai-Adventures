@@ -14,7 +14,11 @@ class _AllChatsPageState extends State<AllChatsPage> {
 
   final List<Map<String, String>> chats = [
     {'name': 'Er pupone', 'message': 'A maggggica!', 'unread': 'true'},
-    {'name': 'Bomba Anarchica', 'message': 'Sei nato sotto n cielo, sbaaaagliaaaato', 'unread': 'false'},
+    {
+      'name': 'Bomba Anarchica',
+      'message': 'Sei nato sotto n cielo, sbaaaagliaaaato',
+      'unread': 'false',
+    },
     {'name': 'Marco', 'message': 'Evoco Exodia il proibito!', 'unread': 'true'},
   ];
 
@@ -55,19 +59,20 @@ class _AllChatsPageState extends State<AllChatsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(chat['name']!,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white,
-                      )),
+                  Text(
+                    chat['name']!,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text(chat['message']!,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.white70,
-                      ),
-                      overflow: TextOverflow.ellipsis),
+                  Text(
+                    chat['message']!,
+                    style: const TextStyle(fontSize: 14, color: Colors.white70),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ),
             ),
@@ -78,7 +83,11 @@ class _AllChatsPageState extends State<AllChatsPage> {
                   color: Colors.red,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.fiber_new, color: Colors.white, size: 16),
+                child: const Icon(
+                  Icons.fiber_new,
+                  color: Colors.white,
+                  size: 16,
+                ),
               ),
           ],
         ),
@@ -110,59 +119,96 @@ class _AllChatsPageState extends State<AllChatsPage> {
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Container(
-                  height: 40,
-                  child: Stack(
-                    children: [
-                      AnimatedAlign(
-                        alignment: Alignment(isChatSelected ? -1 : 1, 0),
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                        child: Container(
-                          width: MediaQuery.of(context).size.width / 2.5,
-                          height: 34,
-                          decoration: BoxDecoration(
-                            color: Colors.white10,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                      ),
-                      Row(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final tabCount = 2;
+                    final tabWidth = constraints.maxWidth / tabCount;
+                    final indicatorAlignment =
+                        isChatSelected
+                            ? Alignment.centerLeft
+                            : Alignment.centerRight;
+
+                    return SizedBox(
+                      height: 40,
+                      child: Stack(
                         children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => _switchToTab(0),
-                              child: Center(
-                                child: AnimatedDefaultTextStyle(
-                                  duration: const Duration(milliseconds: 200),
-                                  style: GoogleFonts.poppins(
-                                    fontSize: isChatSelected ? 15 : 12,
-                                    fontWeight: isChatSelected ? FontWeight.w600 : FontWeight.w400,
-                                    color: isChatSelected ? Colors.red : Colors.white70,
-                                  ),
-                                  child: const Text('CHAT'),
-                                ),
+                          AnimatedAlign(
+                            alignment: indicatorAlignment,
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut,
+                            child: Container(
+                              width: tabWidth,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: Colors.white10,
+                                borderRadius: BorderRadius.circular(16),
                               ),
                             ),
                           ),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => _switchToTab(1),
-                              child: Center(
-                                child: AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 200),
-                                  child: isChatSelected
-                                      ? const Icon(Icons.favorite_border, key: ValueKey('outlined'), color: Colors.white70, size: 20)
-                                      : const Icon(Icons.favorite, key: ValueKey('filled'), color: Colors.red, size: 22),
+                          Row(
+                            children: [
+                              SizedBox(
+                                width: tabWidth,
+                                child: GestureDetector(
+                                  onTap: () => _switchToTab(0),
+                                  child: Center(
+                                    child: AnimatedDefaultTextStyle(
+                                      duration: const Duration(
+                                        milliseconds: 200,
+                                      ),
+                                      style: GoogleFonts.poppins(
+                                        fontSize: isChatSelected ? 15 : 12,
+                                        fontWeight:
+                                            isChatSelected
+                                                ? FontWeight.w600
+                                                : FontWeight.w400,
+                                        color:
+                                            isChatSelected
+                                                ? Colors.red
+                                                : Colors.white70,
+                                      ),
+                                      child: const Text('CHAT'),
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
+                              SizedBox(
+                                width: tabWidth,
+                                child: GestureDetector(
+                                  onTap: () => _switchToTab(1),
+                                  child: Center(
+                                    child: AnimatedSwitcher(
+                                      duration: const Duration(
+                                        milliseconds: 200,
+                                      ),
+                                      child:
+                                          isChatSelected
+                                              ? const Icon(
+                                                Icons.favorite_border,
+                                                key: ValueKey('outlined'),
+                                                color: Colors.white70,
+                                                size: 20,
+                                              )
+                                              : const Icon(
+                                                Icons.favorite,
+                                                key: ValueKey('filled'),
+                                                color: Colors.red,
+                                                size: 22,
+                                              ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 16),
@@ -178,7 +224,8 @@ class _AllChatsPageState extends State<AllChatsPage> {
                     ListView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       itemCount: chats.length,
-                      itemBuilder: (context, index) => _buildChatItem(chats[index]),
+                      itemBuilder:
+                          (context, index) => _buildChatItem(chats[index]),
                     ),
                     Center(
                       child: Text(
