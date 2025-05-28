@@ -192,13 +192,16 @@ class _ExplorePageState extends State<ExplorePage> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                IconButton(
-                  icon: const Icon(Icons.search, color: Colors.white),
-                  onPressed: () {
-                    setState(() {
-                      isSearching = true;
-                    });
-                  },
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(40,0,0,0),
+                  child: IconButton(
+                    icon: const Icon(Icons.search, color: Colors.white),
+                    onPressed: () {
+                      setState(() {
+                        isSearching = true;
+                      });
+                    },
+                  ),
                 ),
               ],
             ),

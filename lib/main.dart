@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:progetto/pages/explore_page.dart';
 import 'package:progetto/pages/all_chats_page.dart';
+import 'package:progetto/pages/option_profile.dart';
 
 import 'package:water_drop_nav_bar/water_drop_nav_bar.dart';
 
@@ -43,7 +44,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _pages = const [
     ExplorePage(),
     AllChatsPage(),
-    //
+    OptionProfile(),
   ];
 
   @override
