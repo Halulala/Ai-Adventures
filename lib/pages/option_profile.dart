@@ -58,13 +58,56 @@ class _OptionProfileState extends State<OptionProfile> {
                 ),
                 onTap: () {
                   Navigator.pop(context);
-                  showAboutDialog(
+                  showDialog(
                     context: context,
-                    applicationName: "AI & Adventures",
-                    applicationVersion: "1.0.0",
-                    children: [Text("App sviluppata con Flutter, daje Roma!")],
+                    builder: (context) {
+                      return AlertDialog(
+                        backgroundColor: const Color(0xFF1E1B1B),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        title: Center(
+                          child: Text(
+                            "Informazioni",
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        content: Padding(
+                          padding: const EdgeInsets.fromLTRB(8,30,0,0),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "App: AI & Adventures",
+                                style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                "Versione: 1.0.0",
+                                style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                "App sviluppata con Flutter, daje Roma!",
+                                style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text("Chiudi", style: TextStyle(color: Colors.redAccent)),
+                          ),
+                        ],
+                      );
+                    },
                   );
                 },
+
               ),
             ],
           ),

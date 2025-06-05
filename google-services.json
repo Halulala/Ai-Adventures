@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "526175792934",
+    "project_id": "aiadventure-62fb8",
+    "storage_bucket": "aiadventure-62fb8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:526175792934:android:a48f150888f454e85fdbe7",
+        "android_client_info": {
+          "package_name": "com.example.progetto"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDUH0W7uO-DjB8YwDIZBMDUg-_FGGPYzKQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

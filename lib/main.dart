@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:progetto/pages/explore_page.dart';
@@ -6,7 +7,12 @@ import 'package:progetto/pages/option_profile.dart';
 
 import 'package:water_drop_nav_bar/water_drop_nav_bar.dart';
 
-void main() {
+import 'firebase_options.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
   runApp(const MyApp());
 }
 
@@ -59,7 +65,8 @@ class _MainScreenState extends State<MainScreen> {
         bottomPadding: 12,
         iconSize: 32,
         backgroundColor: const Color(0xFF1E1B1B),
-        waterDropColor: Color(0xFFB22222), // FireBrick // Dark Red (Blood Red)
+        waterDropColor: Color(0xFFB22222),
+        // FireBrick // Dark Red (Blood Red)
         selectedIndex: selectedIndex,
         onItemSelected: (index) {
           setState(() {
@@ -76,10 +83,7 @@ class _MainScreenState extends State<MainScreen> {
             filledIcon: Icons.explore,
             outlinedIcon: Icons.explore_outlined,
           ),
-          BarItem(
-            filledIcon: Icons.forum,
-            outlinedIcon: Icons.forum_outlined,
-          ),
+          BarItem(filledIcon: Icons.forum, outlinedIcon: Icons.forum_outlined),
           BarItem(
             filledIcon: Icons.settings,
             outlinedIcon: Icons.settings_outlined,
