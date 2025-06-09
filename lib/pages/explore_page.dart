@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dynamic_height_grid_view/dynamic_height_grid_view.dart';
+import '../widgets/explore_page/character_card.dart'; // IMPORT CORRETTO
 
 class ExplorePage extends StatefulWidget {
   const ExplorePage({super.key});
@@ -26,12 +27,15 @@ class _ExplorePageState extends State<ExplorePage> {
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: filters.indexOf(selectedFilter));
+    _pageController = PageController(
+      initialPage: filters.indexOf(selectedFilter),
+    );
   }
 
   @override
   void dispose() {
     _pageController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -53,53 +57,6 @@ class _ExplorePageState extends State<ExplorePage> {
     );
   }
 
-  Widget _buildCharacterCard(int index) {
-    final item = characters[index];
-    return Padding(
-      padding: const EdgeInsets.all(4.0),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(10),
-        child: Stack(
-          children: [
-            Image.asset(
-              item['image']!,
-              height: 200,
-              width: double.infinity,
-              fit: BoxFit.cover,
-            ),
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.7),
-                    ],
-                  ),
-                ),
-                child: Text(
-                  '${item['title']}\n${item['description']}',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Colors.white,
-                    height: 1.4,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildTopBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 0, 3),
@@ -118,7 +75,9 @@ class _ExplorePageState extends State<ExplorePage> {
                       hintStyle: const TextStyle(color: Colors.white60),
                       filled: true,
                       fillColor: Colors.white10,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
@@ -143,14 +102,17 @@ class _ExplorePageState extends State<ExplorePage> {
                 Expanded(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      final double buttonWidth = constraints.maxWidth / filters.length;
+                      final double buttonWidth =
+                          constraints.maxWidth / filters.length;
                       return SizedBox(
                         height: 40,
                         child: Stack(
                           children: [
                             AnimatedAlign(
                               alignment: Alignment(
-                                -1 + (2 / (filters.length - 1)) * filters.indexOf(selectedFilter),
+                                -1 +
+                                    (2 / (filters.length - 1)) *
+                                        filters.indexOf(selectedFilter),
                                 0,
                               ),
                               duration: const Duration(milliseconds: 300),
@@ -165,25 +127,34 @@ class _ExplorePageState extends State<ExplorePage> {
                               ),
                             ),
                             Row(
-                              children: filters.map((filter) {
-                                final isSelected = filter == selectedFilter;
-                                return Expanded(
-                                  child: GestureDetector(
-                                    onTap: () => _onFilterTap(filter),
-                                    child: Center(
-                                      child: AnimatedDefaultTextStyle(
-                                        duration: const Duration(milliseconds: 200),
-                                        style: TextStyle(
-                                          fontSize: isSelected ? 15 : 12,
-                                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                                          color: isSelected ? Colors.red : Colors.white70,
+                              children:
+                                  filters.map((filter) {
+                                    final isSelected = filter == selectedFilter;
+                                    return Expanded(
+                                      child: GestureDetector(
+                                        onTap: () => _onFilterTap(filter),
+                                        child: Center(
+                                          child: AnimatedDefaultTextStyle(
+                                            duration: const Duration(
+                                              milliseconds: 200,
+                                            ),
+                                            style: TextStyle(
+                                              fontSize: isSelected ? 15 : 12,
+                                              fontWeight:
+                                                  isSelected
+                                                      ? FontWeight.w600
+                                                      : FontWeight.w400,
+                                              color:
+                                                  isSelected
+                                                      ? Colors.red
+                                                      : Colors.white70,
+                                            ),
+                                            child: Text(filter.toUpperCase()),
+                                          ),
                                         ),
-                                        child: Text(filter.toUpperCase()),
                                       ),
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
+                                    );
+                                  }).toList(),
                             ),
                           ],
                         ),
@@ -193,7 +164,7 @@ class _ExplorePageState extends State<ExplorePage> {
                 ),
                 const SizedBox(width: 10),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(40,0,0,0),
+                  padding: const EdgeInsets.fromLTRB(40, 0, 0, 0),
                   child: IconButton(
                     icon: const Icon(Icons.search, color: Colors.white),
                     onPressed: () {
@@ -247,7 +218,9 @@ class _ExplorePageState extends State<ExplorePage> {
                         crossAxisCount: 2,
                         crossAxisSpacing: 20,
                         mainAxisSpacing: 10,
-                        builder: (ctx, index) => _buildCharacterCard(index),
+                        builder:
+                            (ctx, index) =>
+                                CharacterCard(item: characters[index]),
                       ),
                     );
                   },

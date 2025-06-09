@@ -1,7 +1,8 @@
+// lib/pages/login_page.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../services/auth_service.dart';
 
 class LoginPage extends StatelessWidget {
   final VoidCallback onLoginSuccess;
@@ -14,38 +15,31 @@ class LoginPage extends StatelessWidget {
   });
 
   Future<void> _handleLogin(
-      BuildContext context,
-      String email,
-      String password,
-      ) async {
+    BuildContext context,
+    String email,
+    String password,
+  ) async {
+    final auth = AuthService();
+
     try {
-      final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email.trim(),
-        password: password.trim(),
-      );
-
-      final user = credential.user;
+      final user = await auth.login(email: email, password: password);
       if (user != null) {
-        // Recupera i dati utente da Firestore
-        final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-
-        if (doc.exists) {
-          final data = doc.data()!;
-          final name = data['name'] ?? '';
-          final surname = data['surname'] ?? '';
-          final nickname = data['nickname'] ?? '';
-          final emailFromFirestore = data['email'] ?? '';
-
-          print('Benvenuto $name $surname ($nickname), email: $emailFromFirestore');
-
-          // Qui puoi salvare i dati in uno stato globale o passarli avanti
+        final profile = await auth.getUserProfile();
+        if (profile != null) {
+          final name = profile['name'] ?? '';
+          final surname = profile['surname'] ?? '';
+          final nickname = profile['nickname'] ?? '';
+          final emailFromFirestore = profile['email'] ?? '';
+          print(
+            'Benvenuto $name $surname ($nickname), email: $emailFromFirestore',
+          );
+          // Puoi passare i dati all’app o a un provider
         } else {
-          print('Nessun documento Firestore trovato per questo utente.');
+          print('Profilo non trovato.');
         }
+        onLoginSuccess();
       }
-
-      onLoginSuccess();
-    } on FirebaseAuthException {
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Credenziali non valide. Riprova.')),
       );
@@ -111,7 +105,9 @@ class LoginPage extends StatelessWidget {
                   child: Text(
                     'Accedi',
                     style: GoogleFonts.poppins(
-                        fontSize: 18, color: Colors.white),
+                      fontSize: 18,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),

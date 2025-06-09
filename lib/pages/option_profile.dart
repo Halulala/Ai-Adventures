@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
 
 class OptionProfile extends StatefulWidget {
   const OptionProfile({super.key});
@@ -11,12 +13,14 @@ class OptionProfile extends StatefulWidget {
 }
 
 class _OptionProfileState extends State<OptionProfile> {
-  bool isAvatarExpanded = false;
+  final AuthService _authService = AuthService();
+  final FirestoreService _firestoreService = FirestoreService();
+
+  User? get user => _authService.currentUser;
+
   String nickname = "Caricamento...";
   String email = "";
-  String creationDate = "";
-
-  final user = FirebaseAuth.instance.currentUser;
+  bool isAvatarExpanded = false;
 
   @override
   void initState() {
@@ -25,38 +29,47 @@ class _OptionProfileState extends State<OptionProfile> {
   }
 
   Future<void> _loadUserData() async {
-    if (user != null) {
-      // Email e data creazione da FirebaseAuth
-      email = user!.email ?? "Email non disponibile";
+    if (user == null) return;
 
-      // Nickname da Firestore
-      try {
-        final doc = await FirebaseFirestore.instance.collection('users').doc(user!.uid).get();
-        if (doc.exists && doc.data() != null && doc.data()!['nickname'] != null) {
-          setState(() {
-            nickname = doc.data()!['nickname'];
-          });
-        } else {
-          setState(() {
-            nickname = "Nickname non trovato";
-          });
-        }
-      } catch (e) {
+    setState(() {
+      email = user!.email ?? "Email non disponibile";
+    });
+
+    try {
+      final profile = await _firestoreService.getUserProfile(user!.uid);
+      print("questo e' il profilo");
+      print(profile?.nickname);
+      if (profile != null) {
         setState(() {
-          nickname = "Errore caricamento nickname";
+          nickname = profile.nickname;
+        });
+      } else {
+        setState(() {
+          nickname = "Nickname non trovato";
         });
       }
+      print("questo e' il profilo");
+      print(profile?.nickname);
+
+    } catch (e) {
+      setState(() {
+        nickname = "Errore caricamento nickname";
+      });
     }
   }
 
   Future<void> _updateNickname(String newNickname) async {
-    if (user != null) {
-      await FirebaseFirestore.instance.collection('users').doc(user!.uid).update({
-        'nickname': newNickname,
-      });
+    if (user == null) return;
+
+    try {
+      await _firestoreService.updateNickname(user!.uid, newNickname);
       setState(() {
         nickname = newNickname;
       });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Errore aggiornamento nickname')),
+      );
     }
   }
 
@@ -78,7 +91,7 @@ class _OptionProfileState extends State<OptionProfile> {
                 title: Text("Logout", style: GoogleFonts.poppins(color: Colors.white)),
                 onTap: () async {
                   Navigator.pop(context);
-                  await FirebaseAuth.instance.signOut();
+                  await _authService.signOut();
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Logout effettuato')),
                   );

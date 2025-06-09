@@ -1,7 +1,9 @@
+// lib/pages/register_page.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../services/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 class RegisterPage extends StatefulWidget {
   final VoidCallback onRegisterSuccess;
@@ -28,64 +30,51 @@ class _RegisterPageState extends State<RegisterPage> {
   bool isLoading = false;
 
   Future<void> _handleRegister() async {
+    final authService = AuthService();
+
     if (passwordController.text != confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Le password non coincidono.")),
-      );
+      _showMessage("Le password non coincidono.");
       return;
     }
 
     if (passwordController.text.length < 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("La password deve essere di almeno 6 caratteri.")),
-      );
+      _showMessage("La password deve essere di almeno 6 caratteri.");
       return;
     }
 
-    setState(() {
-      isLoading = true;
-    });
+    setState(() => isLoading = true);
 
     try {
-      final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
+      final user = await authService.register(
+        name: nameController.text,
+        surname: surnameController.text,
+        nickname: usernameController.text,
+        email: emailController.text,
+        password: passwordController.text,
       );
 
-      final user = credential.user;
       if (user != null) {
-        await user.updateDisplayName(usernameController.text.trim());
-
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-          'name': nameController.text.trim(),
-          'surname': surnameController.text.trim(),
-          'nickname': usernameController.text.trim(),
-          'email': emailController.text.trim(),
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-
-        await user.reload();
-
-        widget.onRegisterSuccess(); // ✅ NAVIGAZIONE CORRETTA QUI
+        widget.onRegisterSuccess();
       }
     } on FirebaseAuthException catch (e) {
-      String errorMessage = "Errore durante la registrazione.";
+      String message = "Errore durante la registrazione.";
       if (e.code == 'email-already-in-use') {
-        errorMessage = "Questa email è già registrata.";
+        message = "Questa email è già registrata.";
       } else if (e.code == 'invalid-email') {
-        errorMessage = "L'indirizzo email non è valido.";
+        message = "L'indirizzo email non è valido.";
       } else if (e.code == 'weak-password') {
-        errorMessage = "La password è troppo debole.";
+        message = "La password è troppo debole.";
       }
-
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMessage)));
+      _showMessage(message);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Errore sconosciuto: $e")));
+      _showMessage("Errore sconosciuto: $e");
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      setState(() => isLoading = false);
     }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -104,17 +93,12 @@ class _RegisterPageState extends State<RegisterPage> {
               Text('Registrazione', style: GoogleFonts.pixelifySans(fontSize: 32, color: Colors.white)),
               const SizedBox(height: 40),
 
-              TextField(controller: nameController, style: const TextStyle(color: Colors.white), decoration: _inputDecoration("Nome")),
-              const SizedBox(height: 10),
-              TextField(controller: surnameController, style: const TextStyle(color: Colors.white), decoration: _inputDecoration("Cognome")),
-              const SizedBox(height: 10),
-              TextField(controller: usernameController, style: const TextStyle(color: Colors.white), decoration: _inputDecoration("Nickname")),
-              const SizedBox(height: 10),
-              TextField(controller: emailController, keyboardType: TextInputType.emailAddress, style: const TextStyle(color: Colors.white), decoration: _inputDecoration("Email", hintText: "esempio@mail.com")),
-              const SizedBox(height: 10),
-              TextField(controller: passwordController, obscureText: true, style: const TextStyle(color: Colors.white), decoration: _inputDecoration("Password", hintText: "Almeno 6 caratteri")),
-              const SizedBox(height: 10),
-              TextField(controller: confirmPasswordController, obscureText: true, style: const TextStyle(color: Colors.white), decoration: _inputDecoration("Conferma Password")),
+              _buildTextField(nameController, "Nome"),
+              _buildTextField(surnameController, "Cognome"),
+              _buildTextField(usernameController, "Nickname"),
+              _buildTextField(emailController, "Email", keyboardType: TextInputType.emailAddress, hint: "esempio@mail.com"),
+              _buildTextField(passwordController, "Password", obscure: true, hint: "Almeno 6 caratteri"),
+              _buildTextField(confirmPasswordController, "Conferma Password", obscure: true),
               const SizedBox(height: 30),
 
               SizedBox(
@@ -139,6 +123,25 @@ class _RegisterPageState extends State<RegisterPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(
+      TextEditingController controller,
+      String label, {
+        bool obscure = false,
+        String? hint,
+        TextInputType keyboardType = TextInputType.text,
+      }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: TextField(
+        controller: controller,
+        obscureText: obscure,
+        keyboardType: keyboardType,
+        style: const TextStyle(color: Colors.white),
+        decoration: _inputDecoration(label, hintText: hint),
       ),
     );
   }
