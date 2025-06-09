@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class LoginPage extends StatelessWidget {
   final VoidCallback onLoginSuccess;
@@ -18,10 +19,31 @@ class LoginPage extends StatelessWidget {
       String password,
       ) async {
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email.trim(),
         password: password.trim(),
       );
+
+      final user = credential.user;
+      if (user != null) {
+        // Recupera i dati utente da Firestore
+        final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+
+        if (doc.exists) {
+          final data = doc.data()!;
+          final name = data['name'] ?? '';
+          final surname = data['surname'] ?? '';
+          final nickname = data['nickname'] ?? '';
+          final emailFromFirestore = data['email'] ?? '';
+
+          print('Benvenuto $name $surname ($nickname), email: $emailFromFirestore');
+
+          // Qui puoi salvare i dati in uno stato globale o passarli avanti
+        } else {
+          print('Nessun documento Firestore trovato per questo utente.');
+        }
+      }
+
       onLoginSuccess();
     } on FirebaseAuthException {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -37,11 +59,9 @@ class LoginPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFF1E1B1B),
-      // Questa proprietà fa sì che il body si ridimensioni quando appare la tastiera:
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: SingleChildScrollView(
-          // Consente di scrollare quando la tastiera è visibile
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
