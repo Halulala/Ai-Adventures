@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:dynamic_height_grid_view/dynamic_height_grid_view.dart';
-import '../widgets/explore_page/character_card.dart'; // IMPORT CORRETTO
+import 'package:progetto/pages/option_profile.dart';
+import '../widgets/explore_page/character_card.dart';
+import '../models/character_model.dart';
+import '../services/firestore_service.dart'; // Assicurati che il path sia corretto
 
 class ExplorePage extends StatefulWidget {
   const ExplorePage({super.key});
@@ -12,15 +15,11 @@ class ExplorePage extends StatefulWidget {
 class _ExplorePageState extends State<ExplorePage> {
   final TextEditingController _searchController = TextEditingController();
   final List<String> filters = ['for you', 'today', 'random'];
-  final List<Map<String, String>> characters = List.generate(14, (index) {
-    return {
-      'title': 'Dark Caverns',
-      'description': 'A journey into shadows...',
-      'image': 'images/720x1280.png',
-    };
-  });
+  final FirestoreService _firestoreService = FirestoreService();
 
+  late Future<List<CharacterModel>> _charactersFuture;
   late PageController _pageController;
+
   String selectedFilter = 'for you';
   bool isSearching = false;
 
@@ -30,6 +29,7 @@ class _ExplorePageState extends State<ExplorePage> {
     _pageController = PageController(
       initialPage: filters.indexOf(selectedFilter),
     );
+    _charactersFuture = _firestoreService.getAllCharacters(); // Firestore data
   }
 
   @override
@@ -75,9 +75,7 @@ class _ExplorePageState extends State<ExplorePage> {
                       hintStyle: const TextStyle(color: Colors.white60),
                       filled: true,
                       fillColor: Colors.white10,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
@@ -102,17 +100,14 @@ class _ExplorePageState extends State<ExplorePage> {
                 Expanded(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      final double buttonWidth =
-                          constraints.maxWidth / filters.length;
+                      final double buttonWidth = constraints.maxWidth / filters.length;
                       return SizedBox(
                         height: 40,
                         child: Stack(
                           children: [
                             AnimatedAlign(
                               alignment: Alignment(
-                                -1 +
-                                    (2 / (filters.length - 1)) *
-                                        filters.indexOf(selectedFilter),
+                                -1 + (2 / (filters.length - 1)) * filters.indexOf(selectedFilter),
                                 0,
                               ),
                               duration: const Duration(milliseconds: 300),
@@ -127,34 +122,26 @@ class _ExplorePageState extends State<ExplorePage> {
                               ),
                             ),
                             Row(
-                              children:
-                                  filters.map((filter) {
-                                    final isSelected = filter == selectedFilter;
-                                    return Expanded(
-                                      child: GestureDetector(
-                                        onTap: () => _onFilterTap(filter),
-                                        child: Center(
-                                          child: AnimatedDefaultTextStyle(
-                                            duration: const Duration(
-                                              milliseconds: 200,
-                                            ),
-                                            style: TextStyle(
-                                              fontSize: isSelected ? 15 : 12,
-                                              fontWeight:
-                                                  isSelected
-                                                      ? FontWeight.w600
-                                                      : FontWeight.w400,
-                                              color:
-                                                  isSelected
-                                                      ? Colors.red
-                                                      : Colors.white70,
-                                            ),
-                                            child: Text(filter.toUpperCase()),
-                                          ),
+                              children: filters.map((filter) {
+                                final isSelected = filter == selectedFilter;
+                                return Expanded(
+                                  child: GestureDetector(
+                                    onTap: () => _onFilterTap(filter),
+                                    child: Center(
+                                      child: AnimatedDefaultTextStyle(
+                                        duration: const Duration(milliseconds: 200),
+                                        style: TextStyle(
+                                          fontSize: isSelected ? 15 : 12,
+                                          fontWeight:
+                                          isSelected ? FontWeight.w600 : FontWeight.w400,
+                                          color: isSelected ? Colors.red : Colors.white70,
                                         ),
+                                        child: Text(filter.toUpperCase()),
                                       ),
-                                    );
-                                  }).toList(),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
                             ),
                           ],
                         ),
@@ -206,22 +193,42 @@ class _ExplorePageState extends State<ExplorePage> {
               _buildTopBar(),
               const SizedBox(height: 0),
               Expanded(
-                child: PageView.builder(
-                  controller: _pageController,
-                  itemCount: filters.length,
-                  onPageChanged: _onSwipe,
-                  itemBuilder: (ctx, pageIndex) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      child: DynamicHeightGridView(
-                        itemCount: characters.length,
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 20,
-                        mainAxisSpacing: 10,
-                        builder:
-                            (ctx, index) =>
-                                CharacterCard(item: characters[index]),
-                      ),
+                child: FutureBuilder<List<CharacterModel>>(
+                  future: _charactersFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    } else if (snapshot.hasError) {
+                      return Center(child: Text('Error: ${snapshot.error}'));
+                    } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      return const Center(child: Text('No characters found.'));
+                    }
+
+                    final characters = snapshot.data!;
+
+                    return PageView.builder(
+                      controller: _pageController,
+                      itemCount: filters.length,
+                      onPageChanged: _onSwipe,
+                      itemBuilder: (ctx, pageIndex) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          child: DynamicHeightGridView(
+                            itemCount: characters.length,
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 20,
+                            mainAxisSpacing: 10,
+                            builder: (ctx, index) =>
+                                GestureDetector(
+                                  child:
+                                    CharacterCard(character: characters[index]),
+                                  onTap: () =>     Navigator.of(context).push(
+                                    MaterialPageRoute(builder: (_) => OptionProfile()),
+                                ),
+                          ),
+                          )
+                        );
+                      },
                     );
                   },
                 ),
