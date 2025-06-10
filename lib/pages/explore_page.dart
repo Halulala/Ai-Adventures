@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:dynamic_height_grid_view/dynamic_height_grid_view.dart';
-import 'package:progetto/pages/option_profile.dart';
 import '../widgets/explore_page/character_card.dart';
 import '../models/character_model.dart';
 import '../services/firestore_service.dart'; // Assicurati che il path sia corretto
@@ -75,7 +74,9 @@ class _ExplorePageState extends State<ExplorePage> {
                       hintStyle: const TextStyle(color: Colors.white60),
                       filled: true,
                       fillColor: Colors.white10,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
@@ -100,14 +101,17 @@ class _ExplorePageState extends State<ExplorePage> {
                 Expanded(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      final double buttonWidth = constraints.maxWidth / filters.length;
+                      final double buttonWidth =
+                          constraints.maxWidth / filters.length;
                       return SizedBox(
                         height: 40,
                         child: Stack(
                           children: [
                             AnimatedAlign(
                               alignment: Alignment(
-                                -1 + (2 / (filters.length - 1)) * filters.indexOf(selectedFilter),
+                                -1 +
+                                    (2 / (filters.length - 1)) *
+                                        filters.indexOf(selectedFilter),
                                 0,
                               ),
                               duration: const Duration(milliseconds: 300),
@@ -122,26 +126,34 @@ class _ExplorePageState extends State<ExplorePage> {
                               ),
                             ),
                             Row(
-                              children: filters.map((filter) {
-                                final isSelected = filter == selectedFilter;
-                                return Expanded(
-                                  child: GestureDetector(
-                                    onTap: () => _onFilterTap(filter),
-                                    child: Center(
-                                      child: AnimatedDefaultTextStyle(
-                                        duration: const Duration(milliseconds: 200),
-                                        style: TextStyle(
-                                          fontSize: isSelected ? 15 : 12,
-                                          fontWeight:
-                                          isSelected ? FontWeight.w600 : FontWeight.w400,
-                                          color: isSelected ? Colors.red : Colors.white70,
+                              children:
+                                  filters.map((filter) {
+                                    final isSelected = filter == selectedFilter;
+                                    return Expanded(
+                                      child: GestureDetector(
+                                        onTap: () => _onFilterTap(filter),
+                                        child: Center(
+                                          child: AnimatedDefaultTextStyle(
+                                            duration: const Duration(
+                                              milliseconds: 200,
+                                            ),
+                                            style: TextStyle(
+                                              fontSize: isSelected ? 15 : 12,
+                                              fontWeight:
+                                                  isSelected
+                                                      ? FontWeight.w600
+                                                      : FontWeight.w400,
+                                              color:
+                                                  isSelected
+                                                      ? Colors.red
+                                                      : Colors.white70,
+                                            ),
+                                            child: Text(filter.toUpperCase()),
+                                          ),
                                         ),
-                                        child: Text(filter.toUpperCase()),
                                       ),
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
+                                    );
+                                  }).toList(),
                             ),
                           ],
                         ),
@@ -218,15 +230,10 @@ class _ExplorePageState extends State<ExplorePage> {
                             crossAxisCount: 2,
                             crossAxisSpacing: 20,
                             mainAxisSpacing: 10,
-                            builder: (ctx, index) =>
-                                GestureDetector(
-                                  child:
+                            builder:
+                                (ctx, index) =>
                                     CharacterCard(character: characters[index]),
-                                  onTap: () =>     Navigator.of(context).push(
-                                    MaterialPageRoute(builder: (_) => OptionProfile()),
-                                ),
                           ),
-                          )
                         );
                       },
                     );

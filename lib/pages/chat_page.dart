@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:typed_data'; // Required for Uint8List
+import 'dart:convert'; // Required for base64Decode
+
 import '../models/character_model.dart';
 
 class ChatPage extends StatefulWidget {
@@ -15,10 +18,18 @@ class _ChatPageState extends State<ChatPage> {
 
   final List<Map<String, String>> messages = [];
 
+  // Definiamo il colore per l'overlay dell'immagine di sfondo
+  // Sostituiamo Colors.black.withOpacity(0.5) con Color.fromRGBO o Color con alpha esadecimale
+  static const Color _backgroundImageOverlayColor = Color.fromRGBO(0, 0, 0, 0.5); // Nero con 50% di opacità
+  static const Color _chatInputBackgroundColor = Color.fromRGBO(0, 0, 0, 0.8); // Nero con 80% di opacità
+  static const Color _chatBubbleUserColor = Color.fromRGBO(66, 165, 245, 0.8); // blueAccent con 80% di opacità
+  static const Color _chatBubbleCharacterColor = Color.fromRGBO(97, 97, 97, 0.7); // grey.shade800 con 70% di opacità
+
+
   @override
   void initState() {
     super.initState();
-    // Aggiungiamo il messaggio iniziale (prompt) del personaggio
+    // Add the initial message (character's description/prompt)
     messages.add({'sender': widget.character.name, 'text': widget.character.description});
   }
 
@@ -31,26 +42,82 @@ class _ChatPageState extends State<ChatPage> {
       _messageController.clear();
     });
 
-    // Qui in futuro potrai inviare il messaggio all'IA.
+    // In the future, you'll send this message to your AI.
+  }
+
+  // Helper method to build an image from a Base64 string
+  Widget _buildImageFromBase64(String base64String) {
+    if (base64String.isEmpty) {
+      // Fallback for empty Base64 string
+      return Image.asset(
+        'assets/images/720x1280.png', // Default image
+        fit: BoxFit.cover,
+        color: _backgroundImageOverlayColor, // Usiamo il colore definito come costante
+        colorBlendMode: BlendMode.darken,
+      );
+    }
+
+    try {
+      Uint8List bytes = base64Decode(base64String);
+      return Image.memory(
+        bytes,
+        fit: BoxFit.cover,
+        color: _backgroundImageOverlayColor, // Usiamo il colore definito come costante
+        colorBlendMode: BlendMode.darken,
+      );
+    } catch (e) {
+      // Fallback for decoding errors (invalid Base64)
+      debugPrint('Error decoding base64 image on ChatPage for ${widget.character.name}: $e');
+      return Image.asset(
+        'assets/images/720x1280.png', // Fallback for decoding errors
+        fit: BoxFit.cover,
+        color: _backgroundImageOverlayColor, // Usiamo il colore definito come costante
+        colorBlendMode: BlendMode.darken,
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Determine which image widget to use based on the imagePath
+    Widget backgroundImageWidget;
+
+    if (widget.character.imagePath.startsWith('assets/')) {
+      // If it's a local asset path
+      backgroundImageWidget = Image.asset(
+        widget.character.imagePath,
+        fit: BoxFit.cover,
+        color: _backgroundImageOverlayColor, // Usiamo il colore definito come costante
+        colorBlendMode: BlendMode.darken,
+        errorBuilder: (context, error, stackTrace) {
+          // Fallback for asset loading errors
+          debugPrint('Error loading asset background image on ChatPage for ${widget.character.name}: $error');
+          return Image.asset(
+            'assets/images/720x1280.png', // Default fallback image
+            fit: BoxFit.cover,
+            color: _backgroundImageOverlayColor, // Usiamo il colore definito come costante
+            colorBlendMode: BlendMode.darken,
+          );
+        },
+      );
+    } else {
+      // If it's not an asset path, assume it's a Base64 string.
+      final parts = widget.character.imagePath.split(',');
+      final base64Data = parts.length > 1 ? parts.last : widget.character.imagePath;
+      backgroundImageWidget = _buildImageFromBase64(base64Data);
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.character.name),
         backgroundColor: Colors.black87,
+        iconTheme: const IconThemeData(color: Colors.white), // Ensure back button is white
       ),
       body: Stack(
         children: [
-          // Background immagine
+          // Background image using the determined widget
           Positioned.fill(
-            child: Image.asset(
-              widget.character.imagePath,
-              fit: BoxFit.cover,
-              color: Colors.black.withOpacity(0.5),
-              colorBlendMode: BlendMode.darken,
-            ),
+            child: backgroundImageWidget,
           ),
 
           // Chat overlay
@@ -73,8 +140,8 @@ class _ChatPageState extends State<ChatPage> {
                         constraints: const BoxConstraints(maxWidth: 280),
                         decoration: BoxDecoration(
                           color: isUser
-                              ? Colors.blueAccent.withOpacity(0.8)
-                              : Colors.grey.shade800.withOpacity(0.7),
+                              ? _chatBubbleUserColor // Usiamo il colore definito come costante
+                              : _chatBubbleCharacterColor, // Usiamo il colore definito come costante
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -90,10 +157,10 @@ class _ChatPageState extends State<ChatPage> {
                 ),
               ),
 
-              // Input messaggio
+              // Message input
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                color: Colors.black.withOpacity(0.8),
+                color: _chatInputBackgroundColor, // Usiamo il colore definito come costante
                 child: Row(
                   children: [
                     Expanded(
