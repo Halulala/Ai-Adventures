@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import 'firebase_options.dart'; // Generato da flutterfire
 import 'wrappers/login_page_wrapper.dart';
 
@@ -9,6 +10,8 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  //GenerativeModel(model: 'gemini-pro', apiKey: 'AIzaSyA5o1ANvM0eBZsYxzCTw7X7JogudVl4lj0');
   runApp(const MyApp());
 }
 

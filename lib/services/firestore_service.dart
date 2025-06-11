@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/character_model.dart';
+import '../models/chat_model.dart';
 import '../models/user_model.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -43,6 +43,28 @@ class FirestoreService {
   Future<void> addCharacter(CharacterModel character) async {
     await FirebaseFirestore.instance.collection('characters').add(character.toMap());
   }
+
+  Future<void> addMessage(String chatId, MessageModel message) async {
+    await _firestore
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .add(message.toMap());
+  }
+
+  Future<List<MessageModel>> getMessages(String chatId) async {
+    final snapshot = await _firestore
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .orderBy('timestamp')
+        .get();
+
+    return snapshot.docs
+        .map((doc) => MessageModel.fromMap(doc.data()))
+        .toList();
+  }
+
 
 
 }

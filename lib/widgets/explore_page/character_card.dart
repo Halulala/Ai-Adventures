@@ -12,11 +12,12 @@ class CharacterCard extends StatelessWidget {
 
   // Helper method to build an image from a Base64 string
   Widget _buildImageFromBase64(String base64String) {
+    debugPrint('[_buildImageFromBase64] Attempting to decode Base64 for ${character.name}. String length: ${base64String.length}');
+
     if (base64String.isEmpty) {
-      // Return a default image if the Base64 string is empty
-      // and it's not a valid Base64 string.
+      debugPrint('[_buildImageFromBase64] Base64 string is empty. Returning default asset image.');
       return Image.asset(
-        'assets/images/720x1280.png', // Ensure this path is correct in pubspec.yaml
+        '../images/720x1280.png',
         height: 200,
         width: double.infinity,
         fit: BoxFit.cover,
@@ -25,6 +26,7 @@ class CharacterCard extends StatelessWidget {
 
     try {
       Uint8List bytes = base64Decode(base64String);
+      debugPrint('[_buildImageFromBase64] Base64 decoding successful. Image.memory will be used.');
       return Image.memory(
         bytes,
         height: 200,
@@ -32,10 +34,10 @@ class CharacterCard extends StatelessWidget {
         fit: BoxFit.cover,
       );
     } catch (e) {
-      // Fallback to a default image in case of a decoding error (invalid Base64)
-      debugPrint('Error decoding base64 image for ${character.name}: $e');
+      // Questo debugPrint è già presente e importante!
+      debugPrint('Error decoding base64 image for ${character.name}: $e. Returning default asset image.');
       return Image.asset(
-        'assets/images/720x1280.png', // Fallback for decoding errors
+        'assets/images/720x1280.png',
         height: 200,
         width: double.infinity,
         fit: BoxFit.cover,
@@ -45,22 +47,24 @@ class CharacterCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Stampa il valore di imagePath all'inizio del build
+    debugPrint('[CharacterCard] Building for character: ${character.name}, imagePath: ${character.imagePath.length > 50 ? character.imagePath.substring(0, 50) + '...' : character.imagePath}');
+
+
     Widget characterImage;
 
-    // Determine if the image path is an asset or a Base64 string.
-    // We assume anything not explicitly an asset path is a Base64 string.
     if (character.imagePath.startsWith('assets/')) {
-      // If it's a local asset path
+      debugPrint('[CharacterCard] imagePath starts with "assets/". Using Image.asset.');
       characterImage = Image.asset(
         character.imagePath,
         height: 200,
         width: double.infinity,
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) {
-          // Fallback for asset loading errors (e.g., asset not found in pubspec.yaml)
-          debugPrint('Error loading asset image for ${character.name}: $error');
+          // Questo debugPrint è già presente e importante!
+          debugPrint('Error loading asset image for ${character.name}: $error. Returning default asset image.');
           return Image.asset(
-            'assets/images/720x1280.png', // Default fallback for asset errors
+            'assets/images/720x1280.png',
             height: 200,
             width: double.infinity,
             fit: BoxFit.cover,
@@ -68,23 +72,19 @@ class CharacterCard extends StatelessWidget {
         },
       );
     } else {
-      // If it's not an asset path, treat it as a Base64 string.
-      // We handle potential "data:image/..." prefixes.
+      debugPrint('[CharacterCard] imagePath does NOT start with "assets/". Assuming Base64.');
       final parts = character.imagePath.split(',');
       final base64Data = parts.length > 1 ? parts.last : character.imagePath;
-
       characterImage = _buildImageFromBase64(base64Data);
     }
 
+    // Resto identico
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => ChatPage(character: character),
-          ),
+          MaterialPageRoute(builder: (_) => ChatPage(character: character)),
         );
-
       },
       child: Padding(
         padding: const EdgeInsets.all(4.0),
@@ -92,7 +92,7 @@ class CharacterCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           child: Stack(
             children: [
-              characterImage, // Use the dynamically determined image widget
+              characterImage,
               Positioned(
                 bottom: 0,
                 left: 0,
