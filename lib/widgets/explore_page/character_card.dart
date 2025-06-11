@@ -17,7 +17,7 @@ class CharacterCard extends StatelessWidget {
     if (base64String.isEmpty) {
       debugPrint('[_buildImageFromBase64] Base64 string is empty. Returning default asset image.');
       return Image.asset(
-        '../images/720x1280.png',
+        'images/720x1280.png',
         height: 200,
         width: double.infinity,
         fit: BoxFit.cover,
