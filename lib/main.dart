@@ -1,22 +1,28 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:progetto/screens/main_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'firebase_options.dart'; // Generato da flutterfire
 import 'wrappers/login_page_wrapper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  //GenerativeModel(model: 'gemini-pro', apiKey: 'AIzaSyA5o1ANvM0eBZsYxzCTw7X7JogudVl4lj0');
-  runApp(const MyApp());
+  final prefs = await SharedPreferences.getInstance();
+  final rememberLogin = prefs.getBool('remember_login') ?? false;
+  final currentUser = FirebaseAuth.instance.currentUser;
+
+  runApp(MyApp(startLoggedIn: currentUser != null && rememberLogin));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final bool startLoggedIn;
+
+  const MyApp({super.key, required this.startLoggedIn});
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +36,7 @@ class MyApp extends StatelessWidget {
           Theme.of(context).textTheme,
         ),
       ),
-      home: const LoginPageWrapper(),
+      home: startLoggedIn ? const MainScreen() : const LoginPageWrapper(),
     );
   }
 }

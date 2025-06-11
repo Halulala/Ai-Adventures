@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:progetto/pages/create_character.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../cache/user_cache.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 
@@ -32,6 +34,15 @@ class _OptionProfileState extends State<OptionProfile> {
   Future<void> _loadUserData() async {
     if (user == null) return;
 
+    // Verifica se già in cache
+    if (UserCache.nickname != null && UserCache.email != null) {
+      setState(() {
+        nickname = UserCache.nickname!;
+        email = UserCache.email!;
+      });
+      return;
+    }
+
     setState(() {
       email = user!.email ?? "Email non disponibile";
     });
@@ -42,6 +53,10 @@ class _OptionProfileState extends State<OptionProfile> {
         setState(() {
           nickname = profile.nickname;
         });
+
+        // Salva in cache
+        UserCache.nickname = profile.nickname;
+        UserCache.email = user!.email;
       } else {
         setState(() {
           nickname = "Nickname non trovato";
@@ -91,6 +106,9 @@ class _OptionProfileState extends State<OptionProfile> {
                 onTap: () async {
                   Navigator.pop(context);
                   await _authService.signOut();
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.remove('remember_login'); // AGGIUNTO
+                  UserCache.clear();
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Logout effettuato')),
                   );
@@ -328,7 +346,7 @@ class _OptionProfileState extends State<OptionProfile> {
                 style: GoogleFonts.poppins(fontSize: 16, color: Colors.white70),
               ),
               const SizedBox(height: 30),
-        
+
               // Primo box - info utente (testo centrato)
               Container(
                 width: double.infinity,
@@ -367,9 +385,9 @@ class _OptionProfileState extends State<OptionProfile> {
                   ],
                 ),
               ),
-        
+
               const SizedBox(height: 24),
-        
+
               // Secondo box - crea personaggio (testo centrato)
               Container(
                 width: double.infinity,
@@ -382,7 +400,7 @@ class _OptionProfileState extends State<OptionProfile> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(8,0,0,5),
+                      padding: const EdgeInsets.fromLTRB(8, 0, 0, 5),
                       child: Text(
                         "Crea un nuovo personaggio",
                         style: GoogleFonts.poppins(
