@@ -18,7 +18,7 @@ class OptionProfile extends StatefulWidget {
 class _OptionProfileState extends State<OptionProfile> {
   final AuthService _authService = AuthService();
   final FirestoreService _firestoreService = FirestoreService();
-  bool _isLoading = true; // << aggiunto
+  bool _isLoading = true;
 
   User? get user => _authService.currentUser;
 
@@ -35,13 +35,13 @@ class _OptionProfileState extends State<OptionProfile> {
   Future<void> _loadUserData() async {
     if (user == null) return;
 
-    setState(() => _isLoading = true); // << loading start
+    setState(() => _isLoading = true);
 
     if (UserCache.nickname != null && UserCache.email != null) {
       setState(() {
         nickname = UserCache.nickname!;
         email = UserCache.email!;
-        _isLoading = false; // << loading end
+        _isLoading = false;
       });
       return;
     }
@@ -84,7 +84,6 @@ class _OptionProfileState extends State<OptionProfile> {
           nickname = profile.nickname;
         });
 
-        // Salva in cache
         UserCache.nickname = profile.nickname;
         UserCache.email = user!.email;
       } else {
@@ -474,7 +473,7 @@ class _OptionProfileState extends State<OptionProfile> {
                             Padding(
                               padding: const EdgeInsets.fromLTRB(8, 0, 0, 5),
                               child: Text(
-                                "Crea un nuovo personaggio",
+                                "Create a new character",
                                 style: GoogleFonts.poppins(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w600,
@@ -484,7 +483,7 @@ class _OptionProfileState extends State<OptionProfile> {
                             ),
                             const SizedBox(height: 12),
                             Text(
-                              "In questa sessione puoi creare il tuo personaggio contro la quale giocare, pensa ad una storia avvincente! Anche gli altri giocatori potranno vedere il tuo personaggio creato.",
+                              "In this session you can create your own character to play against, think of a compelling story! Other players will also be able to see your created character.",
                               textAlign: TextAlign.left,
                               style: GoogleFonts.poppins(
                                 fontSize: 14,
@@ -509,7 +508,7 @@ class _OptionProfileState extends State<OptionProfile> {
                                   color: Colors.white,
                                 ),
                                 label: Text(
-                                  "Crea Personaggio",
+                                  "Create Character",
                                   style: GoogleFonts.poppins(
                                     color: Colors.white,
                                     fontSize: 16,

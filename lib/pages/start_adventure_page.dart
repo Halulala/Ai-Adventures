@@ -1,4 +1,3 @@
-// lib/pages/start_adventure_page.dart
 import 'package:flutter/material.dart';
 
 class StartAdventurePage extends StatelessWidget {

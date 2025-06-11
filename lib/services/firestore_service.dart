@@ -73,7 +73,6 @@ class FirestoreService {
       await doc.reference.delete();
     }
 
-    // Elimina la chat
     await chatRef.delete();
   }
 
@@ -81,7 +80,6 @@ class FirestoreService {
     final chatRef = _firestore.collection('chats').doc(chatId);
     await chatRef.collection('messages').add(message.toMap());
 
-    // Aggiorna anche il documento principale con l'ultimo messaggio
     await chatRef.set({
       'lastMessage': message.text,
       'characterName': message.sender != 'Tu' ? message.sender : null,

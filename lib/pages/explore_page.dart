@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dynamic_height_grid_view/dynamic_height_grid_view.dart';
 import '../widgets/explore_page/character_card.dart';
 import '../models/character_model.dart';
-import '../services/firestore_service.dart'; // Assicurati che il path sia corretto
+import '../services/firestore_service.dart';
 
 class ExplorePage extends StatefulWidget {
   const ExplorePage({super.key});
@@ -28,7 +28,7 @@ class _ExplorePageState extends State<ExplorePage> {
     _pageController = PageController(
       initialPage: filters.indexOf(selectedFilter),
     );
-    _charactersFuture = _firestoreService.getAllCharacters(); // Firestore data
+    _charactersFuture = _firestoreService.getAllCharacters();
   }
 
   @override

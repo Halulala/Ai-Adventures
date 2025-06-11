@@ -26,7 +26,7 @@ class _CreateCharacterPageState extends State<CreateCharacterPage> {
 
   final FirestoreService _firestoreService = FirestoreService();
 
-  File? _selectedImage;  // File immagine selezionata
+  File? _selectedImage;
 
   final ImagePicker _picker = ImagePicker();
 

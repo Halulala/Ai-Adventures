@@ -1,6 +1,6 @@
 // lib/pages/login_page.dart
 import 'package:flutter/material.dart';
-import '../state/login_page_state.dart'; // <-- Importa il file giusto
+import '../state/login_page_state.dart';
 
 class LoginPage extends StatefulWidget {
   final VoidCallback onLoginSuccess;
@@ -13,5 +13,5 @@ class LoginPage extends StatefulWidget {
   });
 
   @override
-  State<LoginPage> createState() => LoginPageState(); // <-- Funziona ora
+  State<LoginPage> createState() => LoginPageState();
 }

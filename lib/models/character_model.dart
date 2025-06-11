@@ -19,7 +19,7 @@ class CharacterModel {
       name: 'Unknown Character',
       description: '',
       prompt: '',
-      imagePath: 'assets/images/default.png', // o un percorso di default
+      imagePath: 'assets/images/default.png',
     );
   }
 
