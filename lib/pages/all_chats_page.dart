@@ -17,6 +17,7 @@ class _AllChatsPageState extends State<AllChatsPage> {
 
   List<ChatPreviewModel> allChats = [];
   List<ChatPreviewModel> favoriteChats = [];
+  bool _isLoading = true;
 
   final FirestoreService firestoreService = FirestoreService();
 
@@ -28,11 +29,16 @@ class _AllChatsPageState extends State<AllChatsPage> {
   }
 
   Future<void> loadChats() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     final chats = await firestoreService.getAllChatPreviews();
 
     setState(() {
       allChats = chats;
       favoriteChats = chats.where((chat) => chat.isFavorite).toList();
+      _isLoading = false;
     });
   }
 
@@ -58,23 +64,23 @@ class _AllChatsPageState extends State<AllChatsPage> {
       onAddToFavorites: () async {
         await firestoreService.setFavorite(chat.chatId, true);
         loadChats();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Aggiunta ai preferiti')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Aggiunta ai preferiti')));
       },
       onRemoveFromFavorites: () async {
         await firestoreService.setFavorite(chat.chatId, false);
         loadChats();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Rimossa dai preferiti')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Rimossa dai preferiti')));
       },
       onDelete: () async {
         await firestoreService.deleteChat(chat.chatId);
         loadChats();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Chat eliminata')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Chat eliminata')));
       },
       onLongPress: () => _showOptions(context, chat),
     );
@@ -93,26 +99,38 @@ class _AllChatsPageState extends State<AllChatsPage> {
           children: [
             chat.isFavorite
                 ? ListTile(
-              leading: const Icon(Icons.favorite_border, color: Colors.redAccent),
-              title: const Text("Rimuovi dai preferiti", style: TextStyle(color: Colors.white)),
-              onTap: () async {
-                Navigator.pop(context);
-                await firestoreService.setFavorite(chat.chatId, false);
-                loadChats();
-              },
-            )
+                  leading: const Icon(
+                    Icons.favorite_border,
+                    color: Colors.redAccent,
+                  ),
+                  title: const Text(
+                    "Rimuovi dai preferiti",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await firestoreService.setFavorite(chat.chatId, false);
+                    loadChats();
+                  },
+                )
                 : ListTile(
-              leading: const Icon(Icons.favorite, color: Colors.red),
-              title: const Text("Aggiungi ai preferiti", style: TextStyle(color: Colors.white)),
-              onTap: () async {
-                Navigator.pop(context);
-                await firestoreService.setFavorite(chat.chatId, true);
-                loadChats();
-              },
-            ),
+                  leading: const Icon(Icons.favorite, color: Colors.red),
+                  title: const Text(
+                    "Aggiungi ai preferiti",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await firestoreService.setFavorite(chat.chatId, true);
+                    loadChats();
+                  },
+                ),
             ListTile(
               leading: const Icon(Icons.delete, color: Colors.white70),
-              title: const Text("Elimina", style: TextStyle(color: Colors.white)),
+              title: const Text(
+                "Elimina",
+                style: TextStyle(color: Colors.white),
+              ),
               onTap: () async {
                 Navigator.pop(context);
                 await firestoreService.deleteChat(chat.chatId);
@@ -131,7 +149,11 @@ class _AllChatsPageState extends State<AllChatsPage> {
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: AppBar(toolbarHeight: 10, backgroundColor: Colors.transparent, elevation: 0),
+      appBar: AppBar(
+        toolbarHeight: 10,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
       body: Container(
         padding: const EdgeInsets.fromLTRB(4, 4, 4, 5),
         decoration: const BoxDecoration(color: backgroundColor),
@@ -140,14 +162,20 @@ class _AllChatsPageState extends State<AllChatsPage> {
             children: [
               // Tabs
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     final tabWidth = constraints.maxWidth / 2;
                     return Stack(
                       children: [
                         AnimatedAlign(
-                          alignment: isChatSelected ? Alignment.centerLeft : Alignment.centerRight,
+                          alignment:
+                              isChatSelected
+                                  ? Alignment.centerLeft
+                                  : Alignment.centerRight,
                           duration: const Duration(milliseconds: 300),
                           child: Container(
                             width: tabWidth,
@@ -165,12 +193,20 @@ class _AllChatsPageState extends State<AllChatsPage> {
                               child: SizedBox(
                                 width: tabWidth,
                                 child: Center(
-                                  child: Text('CHAT',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: isChatSelected ? 15 : 12,
-                                        fontWeight: isChatSelected ? FontWeight.w600 : FontWeight.w400,
-                                        color: isChatSelected ? Colors.red : Colors.white70,
-                                      )),
+                                  child: Text(
+                                    'CHAT',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: isChatSelected ? 15 : 12,
+                                      fontWeight:
+                                          isChatSelected
+                                              ? FontWeight.w600
+                                              : FontWeight.w400,
+                                      color:
+                                          isChatSelected
+                                              ? Colors.red
+                                              : Colors.white70,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -179,9 +215,16 @@ class _AllChatsPageState extends State<AllChatsPage> {
                               child: SizedBox(
                                 width: tabWidth,
                                 child: Center(
-                                  child: isChatSelected
-                                      ? const Icon(Icons.favorite_border, color: Colors.white70)
-                                      : const Icon(Icons.favorite, color: Colors.red),
+                                  child:
+                                      isChatSelected
+                                          ? const Icon(
+                                            Icons.favorite_border,
+                                            color: Colors.white70,
+                                          )
+                                          : const Icon(
+                                            Icons.favorite,
+                                            color: Colors.red,
+                                          ),
                                 ),
                               ),
                             ),
@@ -204,22 +247,48 @@ class _AllChatsPageState extends State<AllChatsPage> {
                   },
                   children: [
                     // Tab 0: tutte le chat
-                    allChats.isEmpty
-                        ? Center(child: Text('Nessuna chat', style: TextStyle(color: Colors.white60)))
+                    _isLoading
+                        ? const Center(
+                          child: CircularProgressIndicator(
+                            color: Colors.redAccent,
+                          ),
+                        )
+                        : allChats.isEmpty
+                        ? const Center(
+                          child: Text(
+                            'Nessuna chat',
+                            style: TextStyle(color: Colors.white60),
+                          ),
+                        )
                         : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: allChats.length,
-                      itemBuilder: (context, index) => _buildChatItem(allChats[index]),
-                    ),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: allChats.length,
+                          itemBuilder:
+                              (context, index) =>
+                                  _buildChatItem(allChats[index]),
+                        ),
 
                     // Tab 1: preferiti
-                    favoriteChats.isEmpty
-                        ? Center(child: Text('Nessun preferito', style: TextStyle(color: Colors.white60)))
+                    _isLoading
+                        ? const Center(
+                          child: CircularProgressIndicator(
+                            color: Colors.redAccent,
+                          ),
+                        )
+                        : favoriteChats.isEmpty
+                        ? const Center(
+                          child: Text(
+                            'Nessun preferito',
+                            style: TextStyle(color: Colors.white60),
+                          ),
+                        )
                         : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: favoriteChats.length,
-                      itemBuilder: (context, index) => _buildChatItem(favoriteChats[index]),
-                    ),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: favoriteChats.length,
+                          itemBuilder:
+                              (context, index) =>
+                                  _buildChatItem(favoriteChats[index]),
+                        ),
                   ],
                 ),
               ),

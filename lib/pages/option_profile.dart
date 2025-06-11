@@ -18,6 +18,7 @@ class OptionProfile extends StatefulWidget {
 class _OptionProfileState extends State<OptionProfile> {
   final AuthService _authService = AuthService();
   final FirestoreService _firestoreService = FirestoreService();
+  bool _isLoading = true; // << aggiunto
 
   User? get user => _authService.currentUser;
 
@@ -34,13 +35,42 @@ class _OptionProfileState extends State<OptionProfile> {
   Future<void> _loadUserData() async {
     if (user == null) return;
 
-    // Verifica se già in cache
+    setState(() => _isLoading = true); // << loading start
+
     if (UserCache.nickname != null && UserCache.email != null) {
       setState(() {
         nickname = UserCache.nickname!;
         email = UserCache.email!;
+        _isLoading = false; // << loading end
       });
       return;
+    }
+
+    setState(() {
+      email = user!.email ?? "Email non disponibile";
+    });
+
+    try {
+      final profile = await _firestoreService.getUserProfile(user!.uid);
+      if (profile != null) {
+        setState(() {
+          nickname = profile.nickname;
+          _isLoading = false; // << loading end
+        });
+
+        UserCache.nickname = profile.nickname;
+        UserCache.email = user!.email;
+      } else {
+        setState(() {
+          nickname = "Nickname non trovato";
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        nickname = "Errore caricamento nickname";
+        _isLoading = false;
+      });
     }
 
     setState(() {
@@ -81,6 +111,33 @@ class _OptionProfileState extends State<OptionProfile> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Errore aggiornamento nickname')),
       );
+    }
+
+    setState(() {
+      email = user!.email ?? "Email non disponibile";
+    });
+
+    try {
+      final profile = await _firestoreService.getUserProfile(user!.uid);
+      if (profile != null) {
+        setState(() {
+          nickname = profile.nickname;
+          _isLoading = false; // << loading end
+        });
+
+        UserCache.nickname = profile.nickname;
+        UserCache.email = user!.email;
+      } else {
+        setState(() {
+          nickname = "Nickname non trovato";
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        nickname = "Errore caricamento nickname";
+        _isLoading = false;
+      });
     }
   }
 
@@ -308,155 +365,177 @@ class _OptionProfileState extends State<OptionProfile> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 20),
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    isAvatarExpanded = !isAvatarExpanded;
-                  });
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                  width: isAvatarExpanded ? 150 : 100,
-                  height: isAvatarExpanded ? 150 : 100,
-                  child: const CircleAvatar(
-                    backgroundColor: Colors.purple,
-                    child: Icon(Icons.person, size: 50, color: Colors.white),
+      body:
+          _isLoading
+              ? const Center(
+                child: CircularProgressIndicator(color: Colors.redAccent),
+              )
+              : SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 20),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            isAvatarExpanded = !isAvatarExpanded;
+                          });
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                          width: isAvatarExpanded ? 150 : 100,
+                          height: isAvatarExpanded ? 150 : 100,
+                          child: const CircleAvatar(
+                            backgroundColor: Colors.purple,
+                            child: Icon(
+                              Icons.person,
+                              size: 50,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        nickname,
+                        style: GoogleFonts.poppins(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        email,
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          color: Colors.white70,
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+
+                      // Primo box - info utente (testo centrato)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white10,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text(
+                              "Informazioni",
+                              style: GoogleFonts.poppins(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.red,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              "Nickname: $nickname",
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              "Email: $email",
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Secondo box - crea personaggio (testo centrato)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white10,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(8, 0, 0, 5),
+                              child: Text(
+                                "Crea un nuovo personaggio",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.red,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              "In questa sessione puoi creare il tuo personaggio contro la quale giocare, pensa ad una storia avvincente! Anche gli altri giocatori potranno vedere il tuo personaggio creato.",
+                              textAlign: TextAlign.left,
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: Colors.white70,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Center(
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (context) =>
+                                              const CreateCharacterPage(),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(
+                                  Icons.add,
+                                  color: Colors.white,
+                                ),
+                                label: Text(
+                                  "Crea Personaggio",
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.redAccent.withOpacity(
+                                    0.8,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
-              Text(
-                nickname,
-                style: GoogleFonts.poppins(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              Text(
-                email,
-                style: GoogleFonts.poppins(fontSize: 16, color: Colors.white70),
-              ),
-              const SizedBox(height: 30),
-
-              // Primo box - info utente (testo centrato)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white10,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      "Informazioni",
-                      style: GoogleFonts.poppins(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.red,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      "Nickname: $nickname",
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      "Email: $email",
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Secondo box - crea personaggio (testo centrato)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white10,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 0, 0, 5),
-                      child: Text(
-                        "Crea un nuovo personaggio",
-                        style: GoogleFonts.poppins(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.red,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      "In questa sessione puoi creare il tuo personaggio contro la quale giocare, pensa ad una storia avvincente! Anche gli altri giocatori potranno vedere il tuo personaggio creato.",
-                      textAlign: TextAlign.left,
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        color: Colors.white70,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Center(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const CreateCharacterPage(),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.add, color: Colors.white),
-                        label: Text(
-                          "Crea Personaggio",
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: 16,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent.withOpacity(0.8),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 12,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

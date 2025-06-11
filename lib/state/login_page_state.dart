@@ -110,7 +110,7 @@ class LoginPageState extends State<LoginPage> {
                     ),
                   ),
                   child: isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
+                      ? const CircularProgressIndicator(color: Colors.redAccent)
                       : Text(
                     'Accedi',
                     style: GoogleFonts.pixelifySans(
