@@ -13,6 +13,16 @@ class CharacterModel {
     required this.imagePath,
   });
 
+  factory CharacterModel.empty() {
+    return CharacterModel(
+      id: '',
+      name: 'Unknown Character',
+      description: '',
+      prompt: '',
+      imagePath: 'assets/images/default.png', // o un percorso di default
+    );
+  }
+
   factory CharacterModel.fromMap(Map<String, dynamic> data, String documentId) {
     return CharacterModel(
       id: documentId,

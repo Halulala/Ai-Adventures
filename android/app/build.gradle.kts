@@ -1,14 +1,14 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // Il plugin Flutter deve essere applicato dopo Android e Kotlin
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
-}
+}Fcom
 
 android {
     namespace = "com.example.progetto"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973" // 🔧 NDK aggiornato per compatibilità Firebase
+    ndkVersion = flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -21,7 +21,9 @@ android {
 
     defaultConfig {
         applicationId = "com.example.progetto"
-        minSdk = 23 // 🔧 Minimo SDK richiesto da firebase_auth
+        // You can update the following values to match your application needs.
+        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -29,7 +31,7 @@ android {
 
     buildTypes {
         release {
-            // Usa la configurazione di debug temporaneamente per il rilascio
+            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
     }

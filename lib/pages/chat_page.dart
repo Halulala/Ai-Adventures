@@ -2,8 +2,6 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
-
-// Assicurati che i percorsi di importazione per i tuoi modelli e servizi siano corretti
 import '../models/character_model.dart';
 import '../models/chat_model.dart';
 import '../services/firestore_service.dart';
@@ -28,51 +26,38 @@ class _ChatPageState extends State<ChatPage> {
   List<MessageModel> messages = [];
 
   late final GenerativeModel _model;
-  late ChatSession _chat; // Rimosso 'final' per inizializzarla in _initializeChat
+  late ChatSession _chat;
+  late final Widget _cachedBackgroundImage;
 
   @override
   void initState() {
     super.initState();
-    chatId = 'user123_${widget.character.id}'; // Assumi un ID utente statico per semplicità
+    _cachedBackgroundImage = _buildImageFromBase64(widget.character.imagePath);
+    chatId = '${widget.character.id}';
 
-    // --- CORREZIONE ---
-    // Inizializziamo solo il modello qui.
-    // La sessione di chat verrà creata dopo aver caricato la cronologia.
     _model = GenerativeModel(
-      // NOTA: 'gemini-1.5-flash' è un modello potente e veloce.
-      // Puoi usare 'gemini-pro' se preferisci.
       model: 'gemini-1.5-flash',
-      // IMPORTANTE: Non inserire mai la chiave API direttamente nel codice.
-      // Usa variabili d'ambiente o un servizio di gestione dei segreti.
       apiKey: 'AIzaSyA5o1ANvM0eBZsYxzCTw7X7JogudVl4lj0',
     );
 
-    // Avvia il processo di caricamento della cronologia e inizializzazione della chat
     _initializeChat();
   }
 
-  // --- CORREZIONE PRINCIPALE ---
-  // Questo metodo ora gestisce la ricostruzione della cronologia e l'avvio della chat.
   Future<void> _initializeChat() async {
-    // 1. Carica i messaggi salvati da Firestore
     final loadedMessages = await firestoreService.getMessages(chatId);
 
-    // 2. Prepara la cronologia per Gemini creando una lista di Content
     final List<Content> history = [];
     for (final msg in loadedMessages) {
       if (msg.sender == 'Tu') {
-        history.add(Content.text(msg.text)); // Messaggio dell'utente
+        history.add(Content.text(msg.text));
       } else {
-        history.add(Content.model([TextPart(msg.text)])); // Risposta del modello
+        history.add(Content.model([TextPart(msg.text)]));
       }
     }
 
-    // 3. Avvia la sessione di chat con la cronologia ricostruita
     _chat = _model.startChat(history: history);
 
-    // 4. Se non ci sono messaggi, invia il prompt iniziale del personaggio
     if (loadedMessages.isEmpty && widget.character.prompt.trim().isNotEmpty) {
-      // `sendMessage` aggiorna automaticamente la cronologia interna di _chat
       final geminiResponse = await _chat.sendMessage(
         Content.text(widget.character.prompt.trim()),
       );
@@ -85,19 +70,16 @@ class _ChatPageState extends State<ChatPage> {
         timestamp: DateTime.now(),
       );
 
-      // Salva il primo messaggio dell'AI e aggiungilo alla lista da visualizzare
       await firestoreService.addMessage(chatId, aiMessage);
       loadedMessages.add(aiMessage);
     }
 
-    // 5. Aggiorna l'interfaccia utente con tutti i messaggi
     if (mounted) {
       setState(() {
         messages = loadedMessages;
       });
     }
 
-    // 6. Scorri fino in fondo dopo che la UI è stata costruita
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
   }
 
@@ -111,7 +93,6 @@ class _ChatPageState extends State<ChatPage> {
       timestamp: DateTime.now(),
     );
 
-    // Aggiorna subito la UI con il messaggio dell'utente
     setState(() {
       messages.add(userMessage);
       _messageController.clear();
@@ -120,7 +101,6 @@ class _ChatPageState extends State<ChatPage> {
 
     await firestoreService.addMessage(chatId, userMessage);
 
-    // Invia il messaggio a Gemini. `sendMessage` aggiorna automaticamente la cronologia.
     final geminiResponse = await _chat.sendMessage(Content.text(text));
     final aiReply = geminiResponse.text;
 
@@ -130,7 +110,6 @@ class _ChatPageState extends State<ChatPage> {
       timestamp: DateTime.now(),
     );
 
-    // Aggiorna la UI con la risposta dell'AI
     setState(() {
       messages.add(aiMessage);
     });
@@ -152,7 +131,7 @@ class _ChatPageState extends State<ChatPage> {
   Widget _buildImageFromBase64(String base64String) {
     if (base64String.isEmpty) {
       return Image.asset(
-        'assets/images/720x1280.png', // Assicurati che questo percorso sia corretto
+        'assets/images/720x1280.png',
         fit: BoxFit.cover,
         color: _backgroundImageOverlayColor,
         colorBlendMode: BlendMode.darken,
@@ -170,7 +149,7 @@ class _ChatPageState extends State<ChatPage> {
     } catch (e) {
       debugPrint('Errore decodifica immagine Base64: $e');
       return Image.asset(
-        'assets/images/720x1280.png', // Fallback
+        'assets/images/720x1280.png',
         fit: BoxFit.cover,
         color: _backgroundImageOverlayColor,
         colorBlendMode: BlendMode.darken,
@@ -232,9 +211,7 @@ class _ChatPageState extends State<ChatPage> {
       ),
       body: Stack(
         children: [
-          Positioned.fill(
-            child: _buildImageFromBase64(widget.character.imagePath),
-          ),
+          Positioned.fill(child: _cachedBackgroundImage),
           Column(
             children: [
               Expanded(
@@ -305,7 +282,6 @@ class BubbleTailPainter extends CustomPainter {
     canvas.drawPath(path, paint);
   }
 
-  @override
   Size get size => const Size(10, 12);
 
   @override
