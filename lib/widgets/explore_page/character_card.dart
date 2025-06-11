@@ -9,7 +9,7 @@ class CharacterCard extends StatelessWidget {
   final CharacterModel character;
 
   const CharacterCard({required this.character, super.key});
-
+  //TODO rimuovere i print
   Widget _buildImageFromBase64(String base64String) {
     debugPrint(
       '[_buildImageFromBase64] Attempting to decode Base64 for ${character.name}. String length: ${base64String.length}',

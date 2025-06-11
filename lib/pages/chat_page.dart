@@ -5,6 +5,7 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import '../models/character_model.dart';
 import '../models/chat_model.dart';
 import '../services/firestore_service.dart';
+import '../widgets/chat/typing_indicator.dart';
 
 const Color _backgroundImageOverlayColor = Colors.black54;
 
@@ -24,6 +25,7 @@ class _ChatPageState extends State<ChatPage> {
   final ScrollController _scrollController = ScrollController();
 
   List<MessageModel> messages = [];
+  bool _isTyping = false;
 
   late final GenerativeModel _model;
   late ChatSession _chat;
@@ -95,6 +97,7 @@ class _ChatPageState extends State<ChatPage> {
 
     setState(() {
       messages.add(userMessage);
+      _isTyping = true; // Mostra "sta scrivendo"
       _messageController.clear();
     });
     _scrollToBottom();
@@ -112,11 +115,13 @@ class _ChatPageState extends State<ChatPage> {
 
     setState(() {
       messages.add(aiMessage);
+      _isTyping = false; // Nasconde "sta scrivendo"
     });
     _scrollToBottom();
 
     await firestoreService.addMessage(chatId, aiMessage);
   }
+
 
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
@@ -218,11 +223,44 @@ class _ChatPageState extends State<ChatPage> {
                 child: ListView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.all(10),
-                  itemCount: messages.length,
+                  itemCount: messages.length + (_isTyping ? 1 : 0), // +1 per il typing
                   itemBuilder: (context, index) {
-                    final msg = messages[index];
-                    final isUser = msg.sender == 'Tu';
-                    return _buildMessageBubble(msg, isUser);
+                    if (index < messages.length) {
+                      final msg = messages[index];
+                      final isUser = msg.sender == 'Tu';
+                      return _buildMessageBubble(msg, isUser);
+                    } else {
+                      // Ultimo elemento: sta scrivendo
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            CustomPaint(
+                              painter: BubbleTailPainter(
+                                color: Colors.grey.shade900.withOpacity(0.85),
+                                isUser: false,
+                              ),
+                            ),
+                            Flexible(
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade900.withOpacity(0.85),
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(16),
+                                    topRight: Radius.circular(16),
+                                    bottomRight: Radius.circular(16),
+                                  ),
+                                ),
+                                child: const TypingIndicator(),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
                   },
                 ),
               ),
@@ -256,6 +294,7 @@ class _ChatPageState extends State<ChatPage> {
       ),
     );
   }
+
 }
 
 class BubbleTailPainter extends CustomPainter {
