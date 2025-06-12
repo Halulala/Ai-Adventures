@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,7 +10,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../cache/user_cache.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../services/connectivity_service.dart';
 import 'create_character.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 
 class OptionProfile extends StatefulWidget {
   const OptionProfile({super.key});
@@ -22,6 +25,7 @@ class OptionProfile extends StatefulWidget {
 class _OptionProfileState extends State<OptionProfile> {
   final AuthService _authService = AuthService();
   final FirestoreService _firestoreService = FirestoreService();
+  final ConnectivityService _connectivityService = ConnectivityService();
 
   bool _isLoading = true;
   String nickname = "Caricamento...";
@@ -35,6 +39,14 @@ class _OptionProfileState extends State<OptionProfile> {
   void initState() {
     super.initState();
     _loadUserData();
+    // Non serve chiamare checkConnection, usiamo direttamente lo StreamBuilder su connectionStream
+  }
+
+  @override
+  void dispose() {
+    // Se il ConnectivityService necessita di chiudere lo streamcontroller:
+    _connectivityService.dispose();
+    super.dispose();
   }
 
   /// Carica nickname, email e avatarBase64 dal profilo Firestore o cache.
@@ -131,20 +143,36 @@ class _OptionProfileState extends State<OptionProfile> {
     }
 
     try {
-      final bytes = await File(pickedFile.path).readAsBytes();
+      final tempDir = await getTemporaryDirectory();
+      final targetPath = path.join(
+        tempDir.path,
+        'compressed_${path.basename(pickedFile.path)}',
+      );
+
+      final compressedFile = await FlutterImageCompress.compressAndGetFile(
+        pickedFile.path,
+        targetPath,
+        quality: 40, // 0–100 (più basso = più compressione)
+        format: CompressFormat.jpeg, // più leggero di PNG
+      );
+
+      if (compressedFile == null) throw Exception('Compressione fallita');
+
+      final bytes = await compressedFile.readAsBytes();
       final base64Image = base64Encode(bytes);
-      // Se vuoi includere il prefix MIME-type:
-      final fullBase64 = 'data:image/png;base64,$base64Image';
+      final fullBase64 = 'data:image/jpeg;base64,$base64Image'; // JPEG ora
 
       await _firestoreService.updateUserAvatar(user!.uid, fullBase64);
 
       setState(() {
         avatarBase64 = fullBase64;
       });
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Immagine profilo aggiornata')),
       );
     } catch (e) {
+      print(e);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Errore nel caricamento dell\'immagine')),
       );
@@ -195,8 +223,14 @@ class _OptionProfileState extends State<OptionProfile> {
                         backgroundColor: const Color(0xFF1E1B1B),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         title: Center(
-                          child: Text("Informazioni", style: GoogleFonts.poppins(
-                              color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                          child: Text(
+                            "Informazioni",
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                         content: Padding(
                           padding: const EdgeInsets.fromLTRB(8, 30, 0, 0),
@@ -204,18 +238,22 @@ class _OptionProfileState extends State<OptionProfile> {
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text("App: AI & Adventures", style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13)),
+                              Text("App: AI & Adventures",
+                                  style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13)),
                               const SizedBox(height: 8),
-                              Text("Versione: 1.0.0", style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13)),
+                              Text("Versione: 1.0.0",
+                                  style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13)),
                               const SizedBox(height: 8),
-                              Text("App sviluppata con Flutter, daje Roma!", style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13)),
+                              Text("App sviluppata con Flutter, daje Roma!",
+                                  style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13)),
                             ],
                           ),
                         ),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(context),
-                            child: const Text("Chiudi", style: TextStyle(color: Colors.redAccent)),
+                            child: const Text("Chiudi",
+                                style: TextStyle(color: Colors.redAccent)),
                           ),
                         ],
                       );
@@ -261,7 +299,8 @@ class _OptionProfileState extends State<OptionProfile> {
                     context: context,
                     builder: (context) => AlertDialog(
                       backgroundColor: const Color(0xFF1E1B1B),
-                      title: Text("Modifica nickname", style: GoogleFonts.poppins(color: Colors.white)),
+                      title: Text("Modifica nickname",
+                          style: GoogleFonts.poppins(color: Colors.white)),
                       content: TextField(
                         controller: nicknameController,
                         style: const TextStyle(color: Colors.white),
@@ -312,128 +351,179 @@ class _OptionProfileState extends State<OptionProfile> {
   Widget build(BuildContext context) {
     const backgroundColor = Color(0xFF1E1B1B);
 
-    return Scaffold(
-      backgroundColor: backgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.person, color: Colors.white),
-          onPressed: _showProfileOptionsSheet,
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white),
-            onPressed: _showOptionsBottomSheet,
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Colors.redAccent))
-          : SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+    return StreamBuilder<bool>(
+      stream: _connectivityService.connectionStream,
+      initialData: true,
+      builder: (context, snapshot) {
+        final hasConnection = snapshot.data ?? true;
+
+        return Stack(
           children: [
-            const SizedBox(height: 20),
-            GestureDetector(
-              onTap: () => setState(() => isAvatarExpanded = !isAvatarExpanded),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-                width: isAvatarExpanded ? 150 : 100,
-                height: isAvatarExpanded ? 150 : 100,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white12,
-                  image: avatarBase64 != null
-                      ? (_getImageProviderFromBase64(avatarBase64!) != null
-                      ? DecorationImage(
-                    image: _getImageProviderFromBase64(avatarBase64!)!,
-                    fit: BoxFit.cover,
-                  )
-                      : null)
-                      : null,
+            Scaffold(
+              backgroundColor: backgroundColor,
+              appBar: AppBar(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                leading: IconButton(
+                  icon: const Icon(Icons.person, color: Colors.white),
+                  onPressed: _showProfileOptionsSheet,
                 ),
-                child: avatarBase64 == null ||
-                    _getImageProviderFromBase64(avatarBase64!) == null
-                    ? const Icon(Icons.person, size: 50, color: Colors.white)
-                    : null,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              nickname,
-              style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            Text(
-              email,
-              style: GoogleFonts.poppins(fontSize: 16, color: Colors.white70),
-            ),
-            const SizedBox(height: 30),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white10,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text("Informazioni", style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.red)),
-                  const SizedBox(height: 12),
-                  Text("Nickname: $nickname", style: GoogleFonts.poppins(fontSize: 16, color: Colors.white)),
-                  const SizedBox(height: 8),
-                  Text("Email: $email", style: GoogleFonts.poppins(fontSize: 16, color: Colors.white)),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.menu, color: Colors.white),
+                    onPressed: _showOptionsBottomSheet,
+                  ),
                 ],
               ),
-            ),
-            const SizedBox(height: 24),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white10,
-                borderRadius: BorderRadius.circular(16),
+              body: _isLoading
+                  ? const Center(child: CircularProgressIndicator(color: Colors.redAccent))
+                  : SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 20),
+                    GestureDetector(
+                      onTap: () => setState(() => isAvatarExpanded = !isAvatarExpanded),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                        width: isAvatarExpanded ? 150 : 100,
+                        height: isAvatarExpanded ? 150 : 100,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white12,
+                          image: avatarBase64 != null
+                              ? (_getImageProviderFromBase64(avatarBase64!) != null
+                              ? DecorationImage(
+                            image: _getImageProviderFromBase64(avatarBase64!)!,
+                            fit: BoxFit.cover,
+                          )
+                              : null)
+                              : null,
+                        ),
+                        child: avatarBase64 == null ||
+                            _getImageProviderFromBase64(avatarBase64!) == null
+                            ? const Icon(Icons.person, size: 50, color: Colors.white)
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      nickname,
+                      style: GoogleFonts.poppins(
+                          fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                    Text(
+                      email,
+                      style: GoogleFonts.poppins(fontSize: 16, color: Colors.white70),
+                    ),
+                    const SizedBox(height: 30),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white10,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text("Informazioni",
+                              style: GoogleFonts.poppins(
+                                  fontSize: 18, fontWeight: FontWeight.w600, color: Colors.red)),
+                          const SizedBox(height: 12),
+                          Text("Nickname: $nickname",
+                              style: GoogleFonts.poppins(fontSize: 16, color: Colors.white)),
+                          const SizedBox(height: 8),
+                          Text("Email: $email",
+                              style: GoogleFonts.poppins(fontSize: 16, color: Colors.white)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white10,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(8, 0, 0, 5),
+                            child: Text("Create a new character",
+                                style: GoogleFonts.poppins(
+                                    fontSize: 18, fontWeight: FontWeight.w600, color: Colors.red)),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            "In this session you can create your own character to play against, think of a compelling story! Other players will also be able to see your created character.",
+                            textAlign: TextAlign.left,
+                            style: GoogleFonts.poppins(fontSize: 14, color: Colors.white70),
+                          ),
+                          const SizedBox(height: 20),
+                          Center(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => const CreateCharacterPage()),
+                                );
+                              },
+                              icon: const Icon(Icons.add, color: Colors.white),
+                              label: Text("Create Character",
+                                  style: GoogleFonts.poppins(color: Colors.white, fontSize: 16)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.redAccent.withOpacity(0.8),
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 0, 0, 5),
-                    child: Text("Create a new character", style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.red)),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    "In this session you can create your own character to play against, think of a compelling story! Other players will also be able to see your created character.",
-                    textAlign: TextAlign.left,
-                    style: GoogleFonts.poppins(fontSize: 14, color: Colors.white70),
-                  ),
-                  const SizedBox(height: 20),
-                  Center(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const CreateCharacterPage()),
-                        );
-                      },
-                      icon: const Icon(Icons.add, color: Colors.white),
-                      label: Text("Create Character", style: GoogleFonts.poppins(color: Colors.white, fontSize: 16)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.redAccent.withOpacity(0.8),
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+
+            // Overlay di connessione assente
+            if (!hasConnection)
+              Positioned.fill(
+                child: AbsorbPointer(
+                  absorbing: true,
+                  child: Container(
+                    color: Colors.black.withOpacity(0.75),
+                    child: const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.wifi_off,
+                            color: Colors.redAccent,
+                            size: 50,
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'Connection absent.\nCheck the network and try again.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.white, fontSize: 16),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 }

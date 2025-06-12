@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../models/character_model.dart';
 import '../models/chat_model.dart';
+import '../services/connectivity_service.dart';
 import '../services/firestore_service.dart';
 import '../widgets/chat/typing_indicator.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
@@ -24,6 +25,8 @@ class _ChatPageState extends State<ChatPage> {
   final firestoreService = FirestoreService();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final ConnectivityService _connectivityService = ConnectivityService();
+
 
   List<MessageModel> messages = [];
   bool _isTyping = false;
@@ -204,112 +207,151 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      appBar: AppBar(
-        title: Text(widget.character.name),
-        backgroundColor: Colors.black87,
-      ),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: IgnorePointer(child: _cachedBackgroundImage),
-          ),
-          Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
-            ),
-            child: Column(
-              children: [
-                Expanded(
-                  child: KeyboardVisibilityBuilder(
-                    builder: (context, isKeyboardVisible) {
-                      return GestureDetector(
-                        onTap: () {
-                          if (isKeyboardVisible) {
-                            FocusScope.of(context).unfocus();
-                          }
-                        },
-                        child: ListView.builder(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.all(10),
-                          itemCount: messages.length + (_isTyping ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (index < messages.length) {
-                              final msg = messages[index];
-                              final isUser = msg.sender == 'Tu';
-                              return _buildMessageBubble(msg, isUser);
-                            } else {
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12.0, vertical: 6),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    CustomPaint(
-                                      painter: BubbleTailPainter(
-                                        color: Colors.grey.shade900
-                                            .withAlpha(217),
-                                        isUser: false,
-                                      ),
-                                    ),
-                                    Flexible(
-                                      child: Container(
-                                        margin: const EdgeInsets.symmetric(
-                                            vertical: 4, horizontal: 6),
-                                        padding: const EdgeInsets.all(12),
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey.shade900
-                                              .withAlpha(217),
-                                          borderRadius:
-                                          const BorderRadius.only(
-                                            topLeft: Radius.circular(16),
-                                            topRight: Radius.circular(16),
-                                            bottomRight: Radius.circular(16),
+    return Material(
+      child: StreamBuilder<bool>(
+        stream: _connectivityService.connectionStream,
+        initialData: true,
+        builder: (context, snapshot) {
+          final hasConnection = snapshot.data ?? true;
+      
+          return Stack(
+            children: [
+              Scaffold(
+                resizeToAvoidBottomInset: false,
+                appBar: AppBar(
+                  title: Text(widget.character.name),
+                  backgroundColor: Colors.black87,
+                ),
+                body: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: IgnorePointer(child: _cachedBackgroundImage),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.only(
+                        bottom: MediaQuery.of(context).viewInsets.bottom,
+                      ),
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: KeyboardVisibilityBuilder(
+                              builder: (context, isKeyboardVisible) {
+                                return GestureDetector(
+                                  onTap: () {
+                                    if (isKeyboardVisible) {
+                                      FocusScope.of(context).unfocus();
+                                    }
+                                  },
+                                  child: ListView.builder(
+                                    controller: _scrollController,
+                                    padding: const EdgeInsets.all(10),
+                                    itemCount: messages.length + (_isTyping ? 1 : 0),
+                                    itemBuilder: (context, index) {
+                                      if (index < messages.length) {
+                                        final msg = messages[index];
+                                        final isUser = msg.sender == 'Tu';
+                                        return _buildMessageBubble(msg, isUser);
+                                      } else {
+                                        return Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 12.0, vertical: 6),
+                                          child: Row(
+                                            crossAxisAlignment: CrossAxisAlignment.end,
+                                            children: [
+                                              CustomPaint(
+                                                painter: BubbleTailPainter(
+                                                  color: Colors.grey.shade900
+                                                      .withAlpha(217),
+                                                  isUser: false,
+                                                ),
+                                              ),
+                                              Flexible(
+                                                child: Container(
+                                                  margin: const EdgeInsets.symmetric(
+                                                      vertical: 4, horizontal: 6),
+                                                  padding: const EdgeInsets.all(12),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.grey.shade900
+                                                        .withAlpha(217),
+                                                    borderRadius:
+                                                    const BorderRadius.only(
+                                                      topLeft: Radius.circular(16),
+                                                      topRight: Radius.circular(16),
+                                                      bottomRight: Radius.circular(16),
+                                                    ),
+                                                  ),
+                                                  child: const TypingIndicator(),
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                        ),
-                                        child: const TypingIndicator(),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                Container(
-                  color: Colors.black.withAlpha(230),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _messageController,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: const InputDecoration(
-                            hintText: 'Scrivi un messaggio...',
-                            hintStyle: TextStyle(color: Colors.grey),
-                            border: InputBorder.none,
+                                        );
+                                      }
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
                           ),
-                          onSubmitted: (_) => _sendMessage(),
+                          Container(
+                            color: Colors.black.withAlpha(230),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 12),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _messageController,
+                                    style: const TextStyle(color: Colors.white),
+                                    decoration: const InputDecoration(
+                                      hintText: 'Scrivi un messaggio...',
+                                      hintStyle: TextStyle(color: Colors.grey),
+                                      border: InputBorder.none,
+                                    ),
+                                    onSubmitted: (_) => _sendMessage(),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.send, color: Colors.white),
+                                  onPressed: _sendMessage,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+      
+              // Overlay connessione assente identico a AllChatsPage
+              if (!hasConnection)
+                Positioned.fill(
+                  child: AbsorbPointer(
+                    absorbing: true,
+                    child: Container(
+                      color: Colors.black.withOpacity(0.75),
+                      child: const Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.wifi_off, color: Colors.redAccent, size: 50),
+                            SizedBox(height: 16),
+                            Text(
+                              'Connection absent.\nCheck the network and try again.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.white, fontSize: 16),
+                            ),
+                          ],
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.send, color: Colors.white),
-                        onPressed: _sendMessage,
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ],
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }

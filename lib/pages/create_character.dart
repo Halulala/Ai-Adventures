@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../models/character_model.dart';
@@ -6,6 +7,9 @@ import '../services/firestore_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'dart:convert';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
+
 
 
 class CreateCharacterPage extends StatefulWidget {
@@ -31,11 +35,34 @@ class _CreateCharacterPageState extends State<CreateCharacterPage> {
   final ImagePicker _picker = ImagePicker();
 
   Future<void> _pickImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
+    final image = await _picker.pickImage(source: ImageSource.gallery);
+    final targetPath;
+    try {
+      final tempDir = await getTemporaryDirectory();
+      targetPath = path.join(tempDir.path, 'compressed_${path.basename(image!.path)}');
+
+      final compressedFile = await FlutterImageCompress.compressAndGetFile(
+        image.path,
+        targetPath,
+        quality: 40, // 0–100 (più basso = più compressione)
+        format: CompressFormat.jpeg, // più leggero di PNG
+      );
+
+      if (compressedFile == null) throw Exception('Compressione fallita');
+
+      final bytes = await compressedFile.readAsBytes();
+      final base64Image = base64Encode(bytes);
+      final fullBase64 = 'data:image/jpeg;base64,$base64Image'; // JPEG ora
+
       setState(() {
-        _selectedImage = File(image.path);
+        _selectedImage = File(targetPath);
       });
+
+    } catch (e) {
+      print(e);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Errore nel caricamento dell\'immagine')),
+      );
     }
   }
   void _saveCharacter() async {
@@ -58,7 +85,11 @@ class _CreateCharacterPageState extends State<CreateCharacterPage> {
       );
 
       await _firestoreService.addCharacter(newCharacter);
+
       Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Character created')),
+      );
     }
   }
 

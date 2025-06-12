@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dynamic_height_grid_view/dynamic_height_grid_view.dart';
+import '../services/connectivity_service.dart';
 import '../widgets/explore_page/character_card.dart';
 import '../models/character_model.dart';
 import '../services/firestore_service.dart';
@@ -15,6 +16,8 @@ class _ExplorePageState extends State<ExplorePage> {
   final TextEditingController _searchController = TextEditingController();
   final List<String> filters = ['for you', 'today'];
   final FirestoreService _firestoreService = FirestoreService();
+  final ConnectivityService _connectivityService = ConnectivityService();
+
 
   late Future<List<CharacterModel>> _charactersFuture;
   late PageController _pageController;
@@ -192,85 +195,129 @@ class _ExplorePageState extends State<ExplorePage> {
   @override
   Widget build(BuildContext context) {
     const backgroundColor = Color(0xFF1E1B1B);
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        toolbarHeight: 10,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: Container(
-        padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [backgroundColor, backgroundColor, backgroundColor],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              _buildTopBar(),
-              const SizedBox(height: 0),
-              Expanded(
-                child: FutureBuilder<List<CharacterModel>>(
-                  future: _charactersFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(
-                        child: CircularProgressIndicator(color: Colors.redAccent),
-                      );
-                    } else if (snapshot.hasError) {
-                      return Center(child: Text('Error: ${snapshot.error}'));
-                    } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                      return const Center(child: Text('No characters found.'));
-                    }
 
-                    return PageView.builder(
-                      controller: _pageController,
-                      itemCount: filters.length,
-                      onPageChanged: _onSwipe,
-                      itemBuilder: (ctx, pageIndex) {
-                        List<CharacterModel> pageCharacters;
+    return StreamBuilder<bool>(
+      stream: _connectivityService.connectionStream,
+      initialData: true,
+      builder: (context, snapshot) {
+        final hasConnection = snapshot.data ?? true;
 
-                        if (filters[pageIndex] == 'today') {
-                          final now = DateTime.now();
-                          pageCharacters = _filteredCharacters.where((character) {
-                            final createdAt = character.createdAt?.toDate();
-                            return createdAt != null &&
-                                createdAt.year == now.year &&
-                                createdAt.month == now.month &&
-                                createdAt.day == now.day;
-                          }).toList();
-                        } else {
-                          pageCharacters = _filteredCharacters;
-                        }
+        return Stack(
+          children: [
+            Scaffold(
+              extendBodyBehindAppBar: true,
+              appBar: AppBar(
+                toolbarHeight: 10,
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+              ),
+              body: Container(
+                padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [backgroundColor, backgroundColor, backgroundColor],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+                child: SafeArea(
+                  child: Column(
+                    children: [
+                      _buildTopBar(),
+                      const SizedBox(height: 0),
+                      Expanded(
+                        child: FutureBuilder<List<CharacterModel>>(
+                          future: _charactersFuture,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return const Center(
+                                child: CircularProgressIndicator(color: Colors.redAccent),
+                              );
+                            } else if (snapshot.hasError) {
+                              return Center(child: Text('Error: ${snapshot.error}'));
+                            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                              return const Center(child: Text('No characters found.'));
+                            }
 
-                        if (pageCharacters.isEmpty) {
-                          return const Center(child: Text('No characters for today.'));
-                        }
+                            return PageView.builder(
+                              controller: _pageController,
+                              itemCount: filters.length,
+                              onPageChanged: _onSwipe,
+                              itemBuilder: (ctx, pageIndex) {
+                                List<CharacterModel> pageCharacters;
 
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          child: DynamicHeightGridView(
-                            itemCount: pageCharacters.length,
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 20,
-                            mainAxisSpacing: 10,
-                            builder: (ctx, index) =>
-                                CharacterCard(character: pageCharacters[index]),
-                          ),
-                        );
-                      },
-                    );
-                  },
+                                if (filters[pageIndex] == 'today') {
+                                  final now = DateTime.now();
+                                  pageCharacters = _filteredCharacters.where((character) {
+                                    final createdAt = character.createdAt?.toDate();
+                                    return createdAt != null &&
+                                        createdAt.year == now.year &&
+                                        createdAt.month == now.month &&
+                                        createdAt.day == now.day;
+                                  }).toList();
+                                } else {
+                                  pageCharacters = _filteredCharacters;
+                                }
+
+                                if (pageCharacters.isEmpty) {
+                                  return const Center(child: Text('No characters for today.'));
+                                }
+
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                                  child: DynamicHeightGridView(
+                                    itemCount: pageCharacters.length,
+                                    crossAxisCount: 2,
+                                    crossAxisSpacing: 20,
+                                    mainAxisSpacing: 10,
+                                    builder: (ctx, index) => CharacterCard(
+                                      character: pageCharacters[index],
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
+            ),
+
+            // Overlay di connessione assente
+            if (!hasConnection)
+              Positioned.fill(
+                child: AbsorbPointer(
+                  absorbing: true,
+                  child: Container(
+                    color: Colors.black.withOpacity(0.75),
+                    child: const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.wifi_off,
+                            color: Colors.redAccent,
+                            size: 50,
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'Connection absent.\nCheck the network and try again.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.white, fontSize: 16),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
+
 }
