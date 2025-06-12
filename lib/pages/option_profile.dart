@@ -1,4 +1,3 @@
-// Tutti gli import rimangono invariati
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
@@ -115,9 +114,9 @@ class _OptionProfileState extends State<OptionProfile> {
         UserCache.nickname = profile.nickname;
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error updating nickname')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Error updating nickname')));
     }
   }
 
@@ -126,9 +125,9 @@ class _OptionProfileState extends State<OptionProfile> {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: source);
     if (pickedFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No image selected')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No image selected')));
       return;
     }
 
@@ -147,40 +146,34 @@ class _OptionProfileState extends State<OptionProfile> {
         final compressedFile = await FlutterImageCompress.compressAndGetFile(
           pickedFile.path,
           targetPath,
-          quality: 40, // puoi regolare la qualità se vuoi
+          quality: 40,
           format: CompressFormat.jpeg,
         );
 
         if (compressedFile != null) {
           fileToProcess = XFile(compressedFile.path);
-        } else {
-          // In caso di fallimento compressione, prosegui con il file originale
-          // (opzionale: potresti notificare l'utente)
         }
       }
-      // Leggi bytes (sia compressi sia non compressi)
       final bytes = await fileToProcess.readAsBytes();
       final base64Image = base64Encode(bytes);
       final fullBase64 = 'data:image/jpeg;base64,$base64Image';
 
-      // Salva su Firestore
       await _firestoreService.updateUserAvatar(user!.uid, fullBase64);
 
       setState(() {
         avatarBase64 = fullBase64;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile image updated')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Profile image updated')));
     } catch (e) {
       print('Errore upload image: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error uploading image')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Error uploading image')));
     }
   }
-
 
   void _showOptionsBottomSheet() {
     showModalBottomSheet(
@@ -197,7 +190,10 @@ class _OptionProfileState extends State<OptionProfile> {
             children: [
               ListTile(
                 leading: const Icon(Icons.logout, color: Colors.red),
-                title: Text("Logout", style: GoogleFonts.poppins(color: Colors.white)),
+                title: Text(
+                  "Logout",
+                  style: GoogleFonts.poppins(color: Colors.white),
+                ),
                 onTap: () async {
                   Navigator.pop(context);
                   await _authService.signOut();
@@ -206,14 +202,19 @@ class _OptionProfileState extends State<OptionProfile> {
                   UserCache.clear();
 
                   Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (context) => const LoginPageWrapper()),
-                        (Route<dynamic> route) => false,
+                    MaterialPageRoute(
+                      builder: (context) => const LoginPageWrapper(),
+                    ),
+                    (Route<dynamic> route) => false,
                   );
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.info_outline, color: Colors.green),
-                title: Text("Information", style: GoogleFonts.poppins(color: Colors.white)),
+                title: Text(
+                  "Information",
+                  style: GoogleFonts.poppins(color: Colors.white),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   showDialog(
@@ -221,7 +222,9 @@ class _OptionProfileState extends State<OptionProfile> {
                     builder: (context) {
                       return AlertDialog(
                         backgroundColor: const Color(0xFF1E1B1B),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         title: Center(
                           child: Text(
                             "Information",
@@ -238,21 +241,39 @@ class _OptionProfileState extends State<OptionProfile> {
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text("App: AI & Adventures",
-                                  style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13)),
+                              Text(
+                                "App: AI & Adventures",
+                                style: GoogleFonts.poppins(
+                                  color: Colors.grey,
+                                  fontSize: 13,
+                                ),
+                              ),
                               const SizedBox(height: 8),
-                              Text("Version: 1.0.0",
-                                  style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13)),
+                              Text(
+                                "Version: 1.0.0",
+                                style: GoogleFonts.poppins(
+                                  color: Colors.grey,
+                                  fontSize: 13,
+                                ),
+                              ),
                               const SizedBox(height: 8),
-                              Text("This application created for a university project, aims to entertain the user with ia chat interaction, we ask you to be patient with the untrained ia that may flicker occasionally.!",
-                                  style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13)),
+                              Text(
+                                "This application created for a university project, aims to entertain the user with ia chat interaction, we ask you to be patient with the untrained ia that may flicker occasionally.!",
+                                style: GoogleFonts.poppins(
+                                  color: Colors.grey,
+                                  fontSize: 13,
+                                ),
+                              ),
                             ],
                           ),
                         ),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(context),
-                            child: const Text("Close", style: TextStyle(color: Colors.redAccent)),
+                            child: const Text(
+                              "Close",
+                              style: TextStyle(color: Colors.redAccent),
+                            ),
                           ),
                         ],
                       );
@@ -268,7 +289,9 @@ class _OptionProfileState extends State<OptionProfile> {
   }
 
   void _showProfileOptionsSheet() {
-    TextEditingController nicknameController = TextEditingController(text: nickname);
+    TextEditingController nicknameController = TextEditingController(
+      text: nickname,
+    );
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1E1B1B),
@@ -283,7 +306,10 @@ class _OptionProfileState extends State<OptionProfile> {
             children: [
               ListTile(
                 leading: const Icon(Icons.image, color: Colors.orange),
-                title: Text("Change Image", style: GoogleFonts.poppins(color: Colors.white)),
+                title: Text(
+                  "Change Image",
+                  style: GoogleFonts.poppins(color: Colors.white),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _showImageSourceSheet();
@@ -291,36 +317,49 @@ class _OptionProfileState extends State<OptionProfile> {
               ),
               ListTile(
                 leading: const Icon(Icons.edit, color: Colors.lightBlue),
-                title: Text("Change Nickname", style: GoogleFonts.poppins(color: Colors.white)),
+                title: Text(
+                  "Change Nickname",
+                  style: GoogleFonts.poppins(color: Colors.white),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   showDialog(
                     context: context,
-                    builder: (context) => AlertDialog(
-                      backgroundColor: const Color(0xFF1E1B1B),
-                      title: Text("Edit Nickname", style: GoogleFonts.poppins(color: Colors.white)),
-                      content: TextField(
-                        controller: nicknameController,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(
-                          hintText: "Enter new nickname",
-                          hintStyle: TextStyle(color: Colors.white38),
+                    builder:
+                        (context) => AlertDialog(
+                          backgroundColor: const Color(0xFF1E1B1B),
+                          title: Text(
+                            "Edit Nickname",
+                            style: GoogleFonts.poppins(color: Colors.white),
+                          ),
+                          content: TextField(
+                            controller: nicknameController,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: const InputDecoration(
+                              hintText: "Enter new nickname",
+                              hintStyle: TextStyle(color: Colors.white38),
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text(
+                                "Cancel",
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                _updateNickname(nicknameController.text);
+                                Navigator.pop(context);
+                              },
+                              child: const Text(
+                                "Save",
+                                style: TextStyle(color: Colors.green),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text("Cancel", style: TextStyle(color: Colors.red)),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            _updateNickname(nicknameController.text);
-                            Navigator.pop(context);
-                          },
-                          child: const Text("Save", style: TextStyle(color: Colors.green)),
-                        ),
-                      ],
-                    ),
                   );
                 },
               ),
@@ -346,7 +385,10 @@ class _OptionProfileState extends State<OptionProfile> {
             children: [
               ListTile(
                 leading: const Icon(Icons.photo_camera, color: Colors.white),
-                title: Text("Scatta foto", style: GoogleFonts.poppins(color: Colors.white)),
+                title: Text(
+                  "Scatta foto",
+                  style: GoogleFonts.poppins(color: Colors.white),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _pickAndSaveImageBase64(ImageSource.camera);
@@ -354,7 +396,10 @@ class _OptionProfileState extends State<OptionProfile> {
               ),
               ListTile(
                 leading: const Icon(Icons.photo_library, color: Colors.white),
-                title: Text("Scegli dalla galleria", style: GoogleFonts.poppins(color: Colors.white)),
+                title: Text(
+                  "Scegli dalla galleria",
+                  style: GoogleFonts.poppins(color: Colors.white),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _pickAndSaveImageBase64(ImageSource.gallery);
@@ -362,7 +407,10 @@ class _OptionProfileState extends State<OptionProfile> {
               ),
               ListTile(
                 leading: const Icon(Icons.close, color: Colors.red),
-                title: Text("Annulla", style: GoogleFonts.poppins(color: Colors.white)),
+                title: Text(
+                  "Annulla",
+                  style: GoogleFonts.poppins(color: Colors.white),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                 },
@@ -373,8 +421,6 @@ class _OptionProfileState extends State<OptionProfile> {
       },
     );
   }
-
-
 
   ImageProvider? _getImageProviderFromBase64(String imagePath) {
     if (imagePath.startsWith('data:image')) {
@@ -417,129 +463,204 @@ class _OptionProfileState extends State<OptionProfile> {
                   ),
                 ],
               ),
-              body: _isLoading
-                  ? const Center(child: CircularProgressIndicator(color: Colors.redAccent))
-                  : SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 20),
-                    GestureDetector(
-                      onTap: () => setState(() => isAvatarExpanded = !isAvatarExpanded),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                        width: isAvatarExpanded ? 150 : 100,
-                        height: isAvatarExpanded ? 150 : 100,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white12,
-                          image: avatarBase64 != null
-                              ? (_getImageProviderFromBase64(avatarBase64!) != null
-                              ? DecorationImage(
-                            image: _getImageProviderFromBase64(avatarBase64!)!,
-                            fit: BoxFit.cover,
-                          )
-                              : null)
-                              : null,
+              body:
+                  _isLoading
+                      ? const Center(
+                        child: CircularProgressIndicator(
+                          color: Colors.redAccent,
                         ),
-                        child: avatarBase64 == null ||
-                            _getImageProviderFromBase64(avatarBase64!) == null
-                            ? const Icon(Icons.person, size: 50, color: Colors.white)
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      nickname,
-                      style: GoogleFonts.poppins(
-                          fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                    Text(
-                      email,
-                      style: GoogleFonts.poppins(fontSize: 16, color: Colors.white70),
-                    ),
-                    const SizedBox(height: 30),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white10,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text("Information",
-                              style: GoogleFonts.poppins(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.red)),
-                          const SizedBox(height: 12),
-                          Text("Nickname: $nickname",
-                              style: GoogleFonts.poppins(fontSize: 16, color: Colors.white)),
-                          const SizedBox(height: 8),
-                          Text("Email: $email",
-                              style: GoogleFonts.poppins(fontSize: 16, color: Colors.white)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white10,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(8, 0, 0, 5),
-                            child: Text("Create a new character",
-                                style: GoogleFonts.poppins(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.red)),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            "In this screen you can create your character! This character will be viewed by all players. *Tip: use an appropriate prompt, e.g., 'Behave like a dungeon master and let me face xxxxx in an epic and exciting battle!'",
-                            textAlign: TextAlign.left,
-                            style: GoogleFonts.poppins(fontSize: 14, color: Colors.white70),
-                          ),
-                          const SizedBox(height: 20),
-                          Center(
-                            child: ElevatedButton.icon(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) => const CreateCharacterPage()),
-                                );
-                              },
-                              icon: const Icon(Icons.add, color: Colors.white),
-                              label: Text("Create Character",
-                                  style: GoogleFonts.poppins(
-                                      color: Colors.white, fontSize: 16)),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor:
-                                const Color.fromRGBO(255, 82, 82, 0.8),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 24, vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12)),
+                      )
+                      : SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 16,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const SizedBox(height: 20),
+                            GestureDetector(
+                              onTap:
+                                  () => setState(
+                                    () => isAvatarExpanded = !isAvatarExpanded,
+                                  ),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                                width: isAvatarExpanded ? 150 : 100,
+                                height: isAvatarExpanded ? 150 : 100,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white12,
+                                  image:
+                                      avatarBase64 != null
+                                          ? (_getImageProviderFromBase64(
+                                                    avatarBase64!,
+                                                  ) !=
+                                                  null
+                                              ? DecorationImage(
+                                                image:
+                                                    _getImageProviderFromBase64(
+                                                      avatarBase64!,
+                                                    )!,
+                                                fit: BoxFit.cover,
+                                              )
+                                              : null)
+                                          : null,
+                                ),
+                                child:
+                                    avatarBase64 == null ||
+                                            _getImageProviderFromBase64(
+                                                  avatarBase64!,
+                                                ) ==
+                                                null
+                                        ? const Icon(
+                                          Icons.person,
+                                          size: 50,
+                                          color: Colors.white,
+                                        )
+                                        : null,
                               ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 20),
+                            Text(
+                              nickname,
+                              style: GoogleFonts.poppins(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            Text(
+                              email,
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                color: Colors.white70,
+                              ),
+                            ),
+                            const SizedBox(height: 30),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.white10,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    "Information",
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.red,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    "Nickname: $nickname",
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 16,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    "Email: $email",
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 16,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.white10,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      8,
+                                      0,
+                                      0,
+                                      5,
+                                    ),
+                                    child: Text(
+                                      "Create a new character",
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.red,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    "In this screen you can create your character! This character will be viewed by all players. *Tip: use an appropriate prompt, e.g., 'Behave like a dungeon master and let me face xxxxx in an epic and exciting battle!'",
+                                    textAlign: TextAlign.left,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      color: Colors.white70,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  Center(
+                                    child: ElevatedButton.icon(
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder:
+                                                (context) =>
+                                                    const CreateCharacterPage(),
+                                          ),
+                                        );
+                                      },
+                                      icon: const Icon(
+                                        Icons.add,
+                                        color: Colors.white,
+                                      ),
+                                      label: Text(
+                                        "Create Character",
+                                        style: GoogleFonts.poppins(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color.fromRGBO(
+                                          255,
+                                          82,
+                                          82,
+                                          0.8,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 24,
+                                          vertical: 12,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
             ),
             if (!hasConnection)
               Positioned.fill(
@@ -551,7 +672,11 @@ class _OptionProfileState extends State<OptionProfile> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.wifi_off, color: Colors.redAccent, size: 50),
+                          Icon(
+                            Icons.wifi_off,
+                            color: Colors.redAccent,
+                            size: 50,
+                          ),
                           SizedBox(height: 16),
                           Text(
                             'Connection absent.\nCheck the network and try again.',

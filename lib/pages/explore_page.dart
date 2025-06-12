@@ -379,7 +379,7 @@ class _ExplorePageState extends State<ExplorePage> {
               Positioned.fill(
                 child: IgnorePointer(
                   child: Container(
-                    color: const Color(0xBF000000), // Black with 75% opacity
+                    color: const Color(0xBF000000),
                     child: const Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,

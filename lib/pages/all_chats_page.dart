@@ -244,10 +244,9 @@ class _AllChatsPageState extends State<AllChatsPage> {
                                   ),
                                   Row(
                                     children: [
-                                      // Tab CHAT (testo + spazio)
                                       GestureDetector(
                                         onTap: () => _switchToTab(0),
-                                        behavior: HitTestBehavior.opaque, // così tutta l'area è tappabile
+                                        behavior: HitTestBehavior.opaque,
                                         child: SizedBox(
                                           width: tabWidth,
                                           height: 40,
@@ -264,7 +263,6 @@ class _AllChatsPageState extends State<AllChatsPage> {
                                           ),
                                         ),
                                       ),
-                                      // Tab FAVORITI (icona + spazio)
                                       GestureDetector(
                                         onTap: () => _switchToTab(1),
                                         behavior: HitTestBehavior.opaque,
