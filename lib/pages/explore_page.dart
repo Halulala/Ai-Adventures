@@ -19,16 +19,21 @@ class _ExplorePageState extends State<ExplorePage> {
   late Future<List<CharacterModel>> _charactersFuture;
   late PageController _pageController;
 
+  List<CharacterModel> _allCharacters = [];
+  List<CharacterModel> _filteredCharacters = [];
+
   String selectedFilter = 'for you';
   bool isSearching = false;
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(
-      initialPage: filters.indexOf(selectedFilter),
-    );
-    _charactersFuture = _firestoreService.getAllCharacters();
+    _pageController = PageController(initialPage: filters.indexOf(selectedFilter));
+    _charactersFuture = _firestoreService.getAllCharacters().then((characters) {
+      _allCharacters = characters;
+      _filteredCharacters = characters;
+      return characters;
+    });
   }
 
   @override
@@ -56,6 +61,18 @@ class _ExplorePageState extends State<ExplorePage> {
     );
   }
 
+  void _onSearchChanged(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredCharacters = _allCharacters;
+      } else {
+        _filteredCharacters = _allCharacters.where((character) {
+          return character.name.toLowerCase().contains(query.toLowerCase());
+        }).toList();
+      }
+    });
+  }
+
   Widget _buildTopBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 0, 3),
@@ -69,14 +86,13 @@ class _ExplorePageState extends State<ExplorePage> {
                     controller: _searchController,
                     autofocus: true,
                     style: const TextStyle(color: Colors.white),
+                    onChanged: _onSearchChanged,
                     decoration: InputDecoration(
                       hintText: 'Search...',
                       hintStyle: const TextStyle(color: Colors.white60),
                       filled: true,
                       fillColor: Colors.white10,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
@@ -90,6 +106,7 @@ class _ExplorePageState extends State<ExplorePage> {
                     setState(() {
                       isSearching = false;
                       _searchController.clear();
+                      _filteredCharacters = _allCharacters;
                     });
                   },
                 ),
@@ -101,8 +118,7 @@ class _ExplorePageState extends State<ExplorePage> {
                 Expanded(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      final double buttonWidth =
-                          constraints.maxWidth / filters.length;
+                      final double buttonWidth = constraints.maxWidth / filters.length;
                       return SizedBox(
                         height: 40,
                         child: Stack(
@@ -126,34 +142,27 @@ class _ExplorePageState extends State<ExplorePage> {
                               ),
                             ),
                             Row(
-                              children:
-                                  filters.map((filter) {
-                                    final isSelected = filter == selectedFilter;
-                                    return Expanded(
-                                      child: GestureDetector(
-                                        onTap: () => _onFilterTap(filter),
-                                        child: Center(
-                                          child: AnimatedDefaultTextStyle(
-                                            duration: const Duration(
-                                              milliseconds: 200,
-                                            ),
-                                            style: TextStyle(
-                                              fontSize: isSelected ? 15 : 12,
-                                              fontWeight:
-                                                  isSelected
-                                                      ? FontWeight.w600
-                                                      : FontWeight.w400,
-                                              color:
-                                                  isSelected
-                                                      ? Colors.red
-                                                      : Colors.white70,
-                                            ),
-                                            child: Text(filter.toUpperCase()),
-                                          ),
+                              children: filters.map((filter) {
+                                final isSelected = filter == selectedFilter;
+                                return Expanded(
+                                  child: GestureDetector(
+                                    onTap: () => _onFilterTap(filter),
+                                    child: Center(
+                                      child: AnimatedDefaultTextStyle(
+                                        duration: const Duration(milliseconds: 200),
+                                        style: TextStyle(
+                                          fontSize: isSelected ? 15 : 12,
+                                          fontWeight: isSelected
+                                              ? FontWeight.w600
+                                              : FontWeight.w400,
+                                          color: isSelected ? Colors.red : Colors.white70,
                                         ),
+                                        child: Text(filter.toUpperCase()),
                                       ),
-                                    );
-                                  }).toList(),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
                             ),
                           ],
                         ),
@@ -210,9 +219,7 @@ class _ExplorePageState extends State<ExplorePage> {
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(
-                        child: CircularProgressIndicator(
-                          color: Colors.redAccent,
-                        ),
+                        child: CircularProgressIndicator(color: Colors.redAccent),
                       );
                     } else if (snapshot.hasError) {
                       return Center(child: Text('Error: ${snapshot.error}'));
@@ -220,18 +227,16 @@ class _ExplorePageState extends State<ExplorePage> {
                       return const Center(child: Text('No characters found.'));
                     }
 
-                    final characters = snapshot.data!;
-
                     return PageView.builder(
                       controller: _pageController,
                       itemCount: filters.length,
                       onPageChanged: _onSwipe,
                       itemBuilder: (ctx, pageIndex) {
-                        List<CharacterModel> filteredCharacters;
+                        List<CharacterModel> pageCharacters;
 
                         if (filters[pageIndex] == 'today') {
                           final now = DateTime.now();
-                          filteredCharacters = characters.where((character) {
+                          pageCharacters = _filteredCharacters.where((character) {
                             final createdAt = character.createdAt?.toDate();
                             return createdAt != null &&
                                 createdAt.year == now.year &&
@@ -239,27 +244,26 @@ class _ExplorePageState extends State<ExplorePage> {
                                 createdAt.day == now.day;
                           }).toList();
                         } else {
-                          filteredCharacters = characters;
+                          pageCharacters = _filteredCharacters;
                         }
 
-                        if (filteredCharacters.isEmpty) {
+                        if (pageCharacters.isEmpty) {
                           return const Center(child: Text('No characters for today.'));
                         }
 
                         return Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 14),
                           child: DynamicHeightGridView(
-                            itemCount: filteredCharacters.length,
+                            itemCount: pageCharacters.length,
                             crossAxisCount: 2,
                             crossAxisSpacing: 20,
                             mainAxisSpacing: 10,
                             builder: (ctx, index) =>
-                                CharacterCard(character: filteredCharacters[index]),
+                                CharacterCard(character: pageCharacters[index]),
                           ),
                         );
                       },
                     );
-
                   },
                 ),
               ),
