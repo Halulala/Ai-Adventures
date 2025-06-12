@@ -13,7 +13,7 @@ class ExplorePage extends StatefulWidget {
 
 class _ExplorePageState extends State<ExplorePage> {
   final TextEditingController _searchController = TextEditingController();
-  final List<String> filters = ['for you', 'today', 'random'];
+  final List<String> filters = ['for you', 'today'];
   final FirestoreService _firestoreService = FirestoreService();
 
   late Future<List<CharacterModel>> _charactersFuture;
@@ -227,20 +227,39 @@ class _ExplorePageState extends State<ExplorePage> {
                       itemCount: filters.length,
                       onPageChanged: _onSwipe,
                       itemBuilder: (ctx, pageIndex) {
+                        List<CharacterModel> filteredCharacters;
+
+                        if (filters[pageIndex] == 'today') {
+                          final now = DateTime.now();
+                          filteredCharacters = characters.where((character) {
+                            final createdAt = character.createdAt?.toDate();
+                            return createdAt != null &&
+                                createdAt.year == now.year &&
+                                createdAt.month == now.month &&
+                                createdAt.day == now.day;
+                          }).toList();
+                        } else {
+                          filteredCharacters = characters;
+                        }
+
+                        if (filteredCharacters.isEmpty) {
+                          return const Center(child: Text('No characters for today.'));
+                        }
+
                         return Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 14),
                           child: DynamicHeightGridView(
-                            itemCount: characters.length,
+                            itemCount: filteredCharacters.length,
                             crossAxisCount: 2,
                             crossAxisSpacing: 20,
                             mainAxisSpacing: 10,
-                            builder:
-                                (ctx, index) =>
-                                    CharacterCard(character: characters[index]),
+                            builder: (ctx, index) =>
+                                CharacterCard(character: filteredCharacters[index]),
                           ),
                         );
                       },
                     );
+
                   },
                 ),
               ),

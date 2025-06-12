@@ -65,9 +65,11 @@ class FirestoreService {
   }
 
   Future<void> addCharacter(CharacterModel character) async {
-    await FirebaseFirestore.instance.collection('characters').add(character.toMap());
-  }
+    final data = character.toMap();
+    data['createdAt'] = character.createdAt ?? Timestamp.now();
 
+    await FirebaseFirestore.instance.collection('characters').add(data);
+  }
   Future<List<ChatPreviewModel>> getAllChatPreviews() async {
     final snapshot = await _firestore.collection('chats').get();
     return snapshot.docs.map((doc) {
