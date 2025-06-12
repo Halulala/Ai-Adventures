@@ -1,5 +1,6 @@
 class ChatPreviewModel {
   final String chatId;
+  final String characterId;  // <--- aggiunto
   final String characterName;
   final String lastMessage;
   final bool unread;
@@ -7,6 +8,7 @@ class ChatPreviewModel {
 
   ChatPreviewModel({
     required this.chatId,
+    required this.characterId,  // <--- aggiunto
     required this.characterName,
     required this.lastMessage,
     this.unread = false,

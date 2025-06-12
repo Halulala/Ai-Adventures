@@ -7,7 +7,6 @@ class CharacterModel {
   final String prompt;
   final String imagePath;
   final Timestamp? createdAt;
-
   CharacterModel({
     required this.id,
     required this.name,

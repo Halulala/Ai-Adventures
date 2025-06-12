@@ -9,6 +9,7 @@ class ChatCard extends StatelessWidget {
   final VoidCallback onRemoveFromFavorites;
   final VoidCallback onDelete;
   final VoidCallback onLongPress;
+  final VoidCallback onTap; // obbligatorio ora
 
   const ChatCard({
     super.key,
@@ -18,11 +19,13 @@ class ChatCard extends StatelessWidget {
     required this.onRemoveFromFavorites,
     required this.onDelete,
     required this.onLongPress,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      onTap: onTap,
       onLongPress: onLongPress,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -37,25 +40,23 @@ class ChatCard extends StatelessWidget {
               CircleAvatar(
                 radius: 24,
                 backgroundColor: Colors.white,
-                backgroundImage: chat['imagePath'] != null &&
-                    chat['imagePath']!.isNotEmpty
+                backgroundImage: (chat['imagePath'] != null &&
+                    chat['imagePath']!.isNotEmpty)
                     ? _getImageProvider(chat['imagePath']!)
-                    : null, // Sfondo neutro
-                child: chat['imagePath'] != null &&
+                    : null,
+                child: (chat['imagePath'] != null &&
                     chat['imagePath']!.isNotEmpty &&
-                    _getImageProvider(chat['imagePath']!) != null
-                    ? null // Se c'è un'immagine valida, la mostreremo sotto
+                    _getImageProvider(chat['imagePath']!) != null)
+                    ? null
                     : const Icon(Icons.person, color: Colors.grey),
               ),
-
-
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      chat['name']!,
+                      chat['name'] ?? 'Unknown',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
@@ -64,8 +65,9 @@ class ChatCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      chat['message']!,
-                      style: const TextStyle(fontSize: 14, color: Colors.white70),
+                      chat['message'] ?? '',
+                      style:
+                      const TextStyle(fontSize: 14, color: Colors.white70),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
@@ -73,7 +75,8 @@ class ChatCard extends StatelessWidget {
               ),
               if (chat['unreadCount'] != null && chat['unreadCount'] != '0')
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                   decoration: BoxDecoration(
                     color: Colors.red,
                     borderRadius: BorderRadius.circular(12),
@@ -89,22 +92,20 @@ class ChatCard extends StatelessWidget {
       ),
     );
   }
-  ImageProvider? _getImageProvider(String imagePath) {
-    if (imagePath.startsWith('assets/')) {
-      return null; // Evitiamo asset images come fallback
-    }
 
+  ImageProvider? _getImageProvider(String imagePath) {
+    // Se asset, ritorna AssetImage
+    if (imagePath.startsWith('assets/')) {
+      return AssetImage(imagePath);
+    }
+    // Altrimenti prova base64
     try {
       final parts = imagePath.split(',');
       final base64Data = parts.length > 1 ? parts.last : imagePath;
       final bytes = base64Decode(base64Data);
       return MemoryImage(bytes);
     } catch (_) {
-      return null; // Se fallisce il decode, non ritorniamo nulla
+      return null;
     }
   }
-
-
-
-
 }

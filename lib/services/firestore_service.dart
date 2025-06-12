@@ -1,21 +1,22 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/character_model.dart';
-import '../models/chat_model.dart';
 import '../models/chat_preview_model.dart';
+import '../models/chat_model.dart';
 import '../models/user_model.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final characterCollection = FirebaseFirestore.instance.collection('characters');
+  final CollectionReference characterCollection =
+  FirebaseFirestore.instance.collection('characters');
 
   Future<List<CharacterModel>> fetchCharacters() async {
     final snapshot = await characterCollection.get();
-    return snapshot.docs.map((doc) {
-      return CharacterModel.fromMap(doc.data(), doc.id);
-    }).toList();
+    return snapshot.docs
+        .map((doc) => CharacterModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+        .toList();
   }
 
-  /// Recupera il profilo utente, ora compreso di imageBase64
   Future<UserModel?> getUserProfile(String uid) async {
     try {
       final doc = await _firestore.collection('users').doc(uid).get();
@@ -28,22 +29,18 @@ class FirestoreService {
     }
   }
 
-  /// Aggiorna solo il nickname
   Future<void> updateNickname(String uid, String newNickname) async {
     await _firestore.collection('users').doc(uid).update({
       'nickname': newNickname,
     });
   }
 
-  // --- NUOVO: aggiorna avatar in Base64 ---
   Future<void> updateUserAvatar(String uid, String base64Image) async {
-    // Salva/aggiorna il campo 'imageBase64' nel documento utente
     await _firestore.collection('users').doc(uid).update({
       'imageBase64': base64Image,
     });
   }
 
-  /// Opzionale: recupera solo l’avatar (stringa Base64)
   Future<String?> getUserAvatar(String uid) async {
     try {
       final doc = await _firestore.collection('users').doc(uid).get();
@@ -58,24 +55,32 @@ class FirestoreService {
   }
 
   Future<List<CharacterModel>> getAllCharacters() async {
-    final snapshot = await FirebaseFirestore.instance.collection('characters').get();
+    final snapshot = await characterCollection.get();
     return snapshot.docs
-        .map((doc) => CharacterModel.fromMap(doc.data(), doc.id))
+        .map((doc) => CharacterModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
         .toList();
   }
 
   Future<void> addCharacter(CharacterModel character) async {
     final data = character.toMap();
     data['createdAt'] = character.createdAt ?? Timestamp.now();
-
-    await FirebaseFirestore.instance.collection('characters').add(data);
+    await characterCollection.add(data);
   }
+
   Future<List<ChatPreviewModel>> getAllChatPreviews() async {
-    final snapshot = await _firestore.collection('chats').get();
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final snapshot = await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('chats')
+        .orderBy('timestamp', descending: true)
+        .get();
+
     return snapshot.docs.map((doc) {
       final data = doc.data();
       return ChatPreviewModel(
         chatId: doc.id,
+        characterId: data['characterId'] ?? '',
         characterName: data['characterName'] ?? 'Sconosciuto',
         lastMessage: data['lastMessage'] ?? '',
         unread: data['unread'] ?? false,
@@ -84,38 +89,119 @@ class FirestoreService {
     }).toList();
   }
 
-  Future<void> setFavorite(String chatId, bool isFavorite) async {
-    await _firestore.collection('chats').doc(chatId).update({
-      'isFavorite': isFavorite,
-    });
-  }
-
-  Future<void> deleteChat(String chatId) async {
-    final chatRef = _firestore.collection('chats').doc(chatId);
-
-    // Elimina i messaggi prima
-    final messagesSnapshot = await chatRef.collection('messages').get();
-    for (final doc in messagesSnapshot.docs) {
-      await doc.reference.delete();
-    }
-
-    await chatRef.delete();
-  }
-
-  Future<void> addMessage(String chatId, MessageModel message) async {
-    final chatRef = _firestore.collection('chats').doc(chatId);
-    await chatRef.collection('messages').add(message.toMap());
+  /// Crea o aggiorna una chat per un utente specifico
+  Future<void> createOrUpdateChat({
+    required String uid,
+    required String chatId,
+    required String characterId,
+    required String characterName,
+    required String lastMessage,
+    bool unread = true,
+    bool isFavorite = false,
+  }) async {
+    final chatRef = _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('chats')
+        .doc(chatId);
 
     await chatRef.set({
-      'lastMessage': message.text,
-      'characterName': message.sender != 'Tu' ? message.sender : null,
-      'unread': message.sender != 'Tu',
-      'isFavorite': false, // default
+      'characterId': characterId,
+      'characterName': characterName,
+      'lastMessage': lastMessage,
+      'unread': unread,
+      'isFavorite': isFavorite,
+      'timestamp': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
 
-  Future<List<MessageModel>> getMessages(String chatId) async {
+  /// Aggiunge un messaggio a una chat specifica di un utente, preservando characterId esistente
+  Future<void> addMessage({
+    required String uid,
+    required String chatId,
+    required MessageModel message,
+  }) async {
+    final chatRef = _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('chats')
+        .doc(chatId);
+
+    // 1. Recupera characterId esistente
+    String existingCharacterId = '';
+    try {
+      final chatSnap = await chatRef.get();
+      if (chatSnap.exists) {
+        final data = chatSnap.data();
+        if (data != null && data.containsKey('characterId')) {
+          existingCharacterId = data['characterId'] as String? ?? '';
+        }
+      }
+    } catch (_) {
+      // Ignora errori di lettura
+    }
+
+    // 2. Aggiungi messaggio nella subcollection
+    final messagesRef = chatRef.collection('messages');
+    await messagesRef.add(message.toMap());
+
+    // 3. Prepara dati di aggiornamento chat preservando characterId
+    final updateData = <String, dynamic>{
+      'lastMessage': message.text,
+      'unread': message.sender != 'Tu',
+      'timestamp': FieldValue.serverTimestamp(),
+    };
+    if (existingCharacterId.isNotEmpty) {
+      updateData['characterId'] = existingCharacterId;
+    }
+    // Se vuoi aggiornare characterName (ad es. se invii come AI):
+    if (message.sender != 'Tu') {
+      updateData['characterName'] = message.sender;
+    }
+
+    // 4. Applica update
+    await chatRef.set(updateData, SetOptions(merge: true));
+  }
+
+  /// Metodo alternativo: addMessage preservando characterId passato esplicitamente
+  /// utile se vuoi forzare sempre un characterId noto (puoi chiamarlo da ChatPage)
+  Future<void> addMessagePreservingCharacter({
+    required String uid,
+    required String chatId,
+    required String characterId,
+    required MessageModel message,
+  }) async {
+    final chatRef = _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('chats')
+        .doc(chatId);
+
+    // Aggiungi il messaggio
+    final messagesRef = chatRef.collection('messages');
+    await messagesRef.add(message.toMap());
+
+    // Aggiorna chat con il characterId fornito
+    final updateData = <String, dynamic>{
+      'characterId': characterId,
+      'lastMessage': message.text,
+      'unread': message.sender != 'Tu',
+      'timestamp': FieldValue.serverTimestamp(),
+    };
+    if (message.sender != 'Tu') {
+      updateData['characterName'] = message.sender;
+    }
+    await chatRef.set(updateData, SetOptions(merge: true));
+  }
+
+  /// Recupera tutti i messaggi di una chat specifica per un utente
+  Future<List<MessageModel>> getMessages({
+    required String uid,
+    required String chatId,
+  }) async {
     final snapshot = await _firestore
+        .collection('users')
+        .doc(uid)
         .collection('chats')
         .doc(chatId)
         .collection('messages')
@@ -124,11 +210,42 @@ class FirestoreService {
 
     return snapshot.docs.map((doc) {
       final data = doc.data();
-      return MessageModel(
-        sender: data['sender'] ?? '???',
-        text: data['text'] ?? '',
-        timestamp: (data['timestamp'] as Timestamp).toDate(),
-      );
+      return MessageModel.fromMap(data);
     }).toList();
+  }
+
+  /// Elimina una chat e tutti i messaggi associati di un utente
+  Future<void> deleteChat({
+    required String uid,
+    required String chatId,
+  }) async {
+    final chatRef = _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('chats')
+        .doc(chatId);
+
+    final messagesSnapshot = await chatRef.collection('messages').get();
+    for (final doc in messagesSnapshot.docs) {
+      await doc.reference.delete();
+    }
+    await chatRef.delete();
+  }
+
+  /// Imposta o rimuove il favorito in una chat specifica di un utente
+  Future<void> setFavorite({
+    required String uid,
+    required String chatId,
+    required bool isFavorite,
+  }) async {
+    final chatRef = _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('chats')
+        .doc(chatId);
+
+    await chatRef.update({
+      'isFavorite': isFavorite,
+    });
   }
 }

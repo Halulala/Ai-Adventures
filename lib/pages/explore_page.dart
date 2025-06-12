@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:dynamic_height_grid_view/dynamic_height_grid_view.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../services/connectivity_service.dart';
 import '../widgets/explore_page/character_card.dart';
 import '../models/character_model.dart';
 import '../services/firestore_service.dart';
+import '../pages/chat_page.dart';
 
 class ExplorePage extends StatefulWidget {
   const ExplorePage({super.key});
@@ -18,7 +22,6 @@ class _ExplorePageState extends State<ExplorePage> {
   final FirestoreService _firestoreService = FirestoreService();
   final ConnectivityService _connectivityService = ConnectivityService();
 
-
   late Future<List<CharacterModel>> _charactersFuture;
   late PageController _pageController;
 
@@ -28,15 +31,21 @@ class _ExplorePageState extends State<ExplorePage> {
   String selectedFilter = 'for you';
   bool isSearching = false;
 
+  String? currentUserId;
+
   @override
   void initState() {
     super.initState();
+    currentUserId = FirebaseAuth.instance.currentUser?.uid;
     _pageController = PageController(initialPage: filters.indexOf(selectedFilter));
-    _charactersFuture = _firestoreService.getAllCharacters().then((characters) {
-      _allCharacters = characters;
-      _filteredCharacters = characters;
-      return characters;
-    });
+    _charactersFuture = _loadCharacters();
+  }
+
+  Future<List<CharacterModel>> _loadCharacters() async {
+    final characters = await _firestoreService.getAllCharacters();
+    _allCharacters = characters;
+    _filteredCharacters = characters;
+    return characters;
   }
 
   @override
@@ -192,6 +201,61 @@ class _ExplorePageState extends State<ExplorePage> {
     );
   }
 
+  Future<void> _onCharacterTap(CharacterModel character) async {
+    if (currentUserId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Devi essere autenticato')),
+      );
+      return;
+    }
+    final uid = currentUserId!;
+
+    // Recupera o crea chatId per questo utente + character
+    final chatId = await _getOrCreateChatId(uid, character);
+
+    // Naviga a ChatPage con chatId
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatPage(character: character, chatId: chatId),
+      ),
+    );
+  }
+
+  Future<String> _getOrCreateChatId(String uid, CharacterModel character) async {
+    final userChatsRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('chats');
+
+    // 1. Cerca chat esistente con questo characterId
+    final querySnap = await userChatsRef
+        .where('characterId', isEqualTo: character.id)
+        .limit(1)
+        .get();
+    if (querySnap.docs.isNotEmpty) {
+      return querySnap.docs.first.id;
+    }
+
+    // 2. Non esiste: creane una nuova.
+    //    Usiamo character.id come doc ID per garantire una sola chat per utente/personaggio.
+    final newChatRef = userChatsRef.doc(character.id);
+    await newChatRef.set({
+      'characterId': character.id,
+      'characterName': character.name,
+      'lastMessage': '', // inizialmente vuoto o prompt iniziale
+      'unread': false,
+      'isFavorite': false,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+    return newChatRef.id;
+
+    // Se preferisci ID random, sostituisci con:
+    // final newDocRef = userChatsRef.doc();
+    // await newDocRef.set({ 'characterId': character.id, ... });
+    // return newDocRef.id;
+  }
+
   @override
   Widget build(BuildContext context) {
     const backgroundColor = Color(0xFF1E1B1B);
@@ -272,6 +336,7 @@ class _ExplorePageState extends State<ExplorePage> {
                                     mainAxisSpacing: 10,
                                     builder: (ctx, index) => CharacterCard(
                                       character: pageCharacters[index],
+                                      onTap: () => _onCharacterTap(pageCharacters[index]),
                                     ),
                                   ),
                                 );
@@ -319,5 +384,4 @@ class _ExplorePageState extends State<ExplorePage> {
       },
     );
   }
-
 }

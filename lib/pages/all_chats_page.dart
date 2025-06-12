@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:progetto/models/character_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import '../models/character_model.dart';
 import '../models/chat_preview_model.dart';
 import '../services/connectivity_service.dart';
 import '../services/firestore_service.dart';
@@ -23,28 +25,47 @@ class _AllChatsPageState extends State<AllChatsPage> {
   List<ChatPreviewModel> favoriteChats = [];
   bool _isLoading = true;
   final ConnectivityService _connectivityService = ConnectivityService();
-
   final FirestoreService firestoreService = FirestoreService();
+
+  String? currentUserId;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: 0);
+    currentUserId = FirebaseAuth.instance.currentUser?.uid;
     loadChats();
   }
 
   Future<void> loadChats() async {
+    if (currentUserId == null) {
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
     setState(() {
       _isLoading = true;
     });
 
-    final chats = await firestoreService.getAllChatPreviews();
-    final completeChats = await firestoreService.getAllCharacters();
+    // 1. Carica le preview delle chat per questo utente
+    final chatPreviews = await firestoreService.getAllChatPreviews();
+    // 2. Carica tutti i personaggi globali
+    final characters = await firestoreService.getAllCharacters();
+
+    // Opzionale: verifica integrità dati
+    for (var cp in chatPreviews) {
+      final exists = characters.any((c) => c.id == cp.characterId);
+      if (!exists) {
+        // debug: manca personaggio
+        // print('Warning: characterId ${cp.characterId} non trovato tra i characters globali');
+      }
+    }
 
     setState(() {
-      allCompleteChats = completeChats;
-      allChats = chats;
-      favoriteChats = chats.where((chat) => chat.isFavorite).toList();
+      allChats = chatPreviews;
+      allCompleteChats = characters;
+      favoriteChats = chatPreviews.where((c) => c.isFavorite).toList();
       _isLoading = false;
     });
   }
@@ -60,58 +81,85 @@ class _AllChatsPageState extends State<AllChatsPage> {
     );
   }
 
+  Future<void> _addToFavorites(ChatPreviewModel chat) async {
+    if (currentUserId == null) return;
+    await firestoreService.setFavorite(
+      uid: currentUserId!,
+      chatId: chat.chatId,
+      isFavorite: true,
+    );
+    await loadChats();
+  }
+
+  Future<void> _removeFromFavorites(ChatPreviewModel chat) async {
+    if (currentUserId == null) return;
+    await firestoreService.setFavorite(
+      uid: currentUserId!,
+      chatId: chat.chatId,
+      isFavorite: false,
+    );
+    await loadChats();
+  }
+
+  Future<void> _deleteChat(ChatPreviewModel chat) async {
+    if (currentUserId == null) return;
+    await firestoreService.deleteChat(uid: currentUserId!, chatId: chat.chatId);
+    await loadChats();
+  }
+
   Widget _buildChatItem(ChatPreviewModel chat) {
-    // Trova il character corrispondente al chatId della chat
-    CharacterModel? character = allCompleteChats.firstWhere(
-      (c) => c.id == chat.chatId,
-      orElse:
-          () => CharacterModel.empty(), // Gestisci il caso in cui non esiste
+    // Trova il personaggio corrispondente tramite characterId
+    CharacterModel character = allCompleteChats.firstWhere(
+      (c) => c.id == chat.characterId,
+      orElse: () => CharacterModel.empty(),
     );
 
-    return GestureDetector(
-      onTap: () {
-        if (character != CharacterModel.empty()) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => ChatPage(character: character)),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Character non trovato')),
-          );
-        }
+    // Handler tap: apre ChatPage con chatId e character
+    void handleTap() {
+      if (character.id.isNotEmpty) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ChatPage(character: character, chatId: chat.chatId),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Character non trovato')));
+      }
+    }
+
+    return ChatCard(
+      chat: {
+        'chatId': chat.chatId,
+        'characterId': chat.characterId,
+        'name': chat.characterName,
+        'message': chat.lastMessage,
+        'unreadCount': chat.unread ? '1' : '0',
+        'imagePath': character.imagePath,
       },
-      child: ChatCard(
-        chat: {
-          'name': chat.characterName,
-          'message': chat.lastMessage,
-          'unreadCount': chat.unread ? '1' : '0',
-          'imagePath': character.imagePath,
-        },
-        isFavorite: chat.isFavorite,
-        onAddToFavorites: () async {
-          await firestoreService.setFavorite(chat.chatId, true);
-          loadChats();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Aggiunta ai preferiti')),
-          );
-        },
-        onRemoveFromFavorites: () async {
-          await firestoreService.setFavorite(chat.chatId, false);
-          loadChats();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Rimossa dai preferiti')),
-          );
-        },
-        onDelete: () async {
-          await firestoreService.deleteChat(chat.chatId);
-          loadChats();
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Chat eliminata')));
-        },
-        onLongPress: () => _showOptions(context, chat),
-      ),
+      isFavorite: chat.isFavorite,
+      onTap: handleTap,
+      onLongPress: () => _showOptions(context, chat),
+      onAddToFavorites: () async {
+        await _addToFavorites(chat);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Aggiunta ai preferiti')));
+      },
+      onRemoveFromFavorites: () async {
+        await _removeFromFavorites(chat);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Rimossa dai preferiti')));
+      },
+      onDelete: () async {
+        await _deleteChat(chat);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Chat eliminata')));
+      },
     );
   }
 
@@ -138,8 +186,7 @@ class _AllChatsPageState extends State<AllChatsPage> {
                   ),
                   onTap: () async {
                     Navigator.pop(context);
-                    await firestoreService.setFavorite(chat.chatId, false);
-                    loadChats();
+                    await _removeFromFavorites(chat);
                   },
                 )
                 : ListTile(
@@ -150,8 +197,7 @@ class _AllChatsPageState extends State<AllChatsPage> {
                   ),
                   onTap: () async {
                     Navigator.pop(context);
-                    await firestoreService.setFavorite(chat.chatId, true);
-                    loadChats();
+                    await _addToFavorites(chat);
                   },
                 ),
             ListTile(
@@ -162,8 +208,7 @@ class _AllChatsPageState extends State<AllChatsPage> {
               ),
               onTap: () async {
                 Navigator.pop(context);
-                await firestoreService.deleteChat(chat.chatId);
-                loadChats();
+                await _deleteChat(chat);
               },
             ),
           ],
