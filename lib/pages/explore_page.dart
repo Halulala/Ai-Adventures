@@ -37,7 +37,9 @@ class _ExplorePageState extends State<ExplorePage> {
   void initState() {
     super.initState();
     currentUserId = FirebaseAuth.instance.currentUser?.uid;
-    _pageController = PageController(initialPage: filters.indexOf(selectedFilter));
+    _pageController = PageController(
+      initialPage: filters.indexOf(selectedFilter),
+    );
     _charactersFuture = _loadCharacters();
   }
 
@@ -56,16 +58,12 @@ class _ExplorePageState extends State<ExplorePage> {
   }
 
   void _onSwipe(int newIndex) {
-    setState(() {
-      selectedFilter = filters[newIndex];
-    });
+    setState(() => selectedFilter = filters[newIndex]);
   }
 
   void _onFilterTap(String filter) {
     final index = filters.indexOf(filter);
-    setState(() {
-      selectedFilter = filter;
-    });
+    setState(() => selectedFilter = filter);
     _pageController.animateToPage(
       index,
       duration: const Duration(milliseconds: 300),
@@ -78,11 +76,65 @@ class _ExplorePageState extends State<ExplorePage> {
       if (query.isEmpty) {
         _filteredCharacters = _allCharacters;
       } else {
-        _filteredCharacters = _allCharacters.where((character) {
-          return character.name.toLowerCase().contains(query.toLowerCase());
-        }).toList();
+        _filteredCharacters =
+            _allCharacters
+                .where(
+                  (character) => character.name.toLowerCase().contains(
+                    query.toLowerCase(),
+                  ),
+                )
+                .toList();
       }
     });
+  }
+
+  Future<void> _onCharacterTap(CharacterModel character) async {
+    if (currentUserId == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Devi essere autenticato')));
+      return;
+    }
+
+    final chatId = await _getOrCreateChatId(currentUserId!, character);
+
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatPage(character: character, chatId: chatId),
+      ),
+    );
+  }
+
+  Future<String> _getOrCreateChatId(
+    String uid,
+    CharacterModel character,
+  ) async {
+    final userChatsRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('chats');
+
+    final querySnap =
+        await userChatsRef
+            .where('characterId', isEqualTo: character.id)
+            .limit(1)
+            .get();
+
+    if (querySnap.docs.isNotEmpty) return querySnap.docs.first.id;
+
+    final newChatRef = userChatsRef.doc(character.id);
+    await newChatRef.set({
+      'characterId': character.id,
+      'characterName': character.name,
+      'lastMessage': '',
+      'unread': false,
+      'isFavorite': false,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+    return newChatRef.id;
   }
 
   Widget _buildTopBar() {
@@ -104,7 +156,9 @@ class _ExplorePageState extends State<ExplorePage> {
                       hintStyle: const TextStyle(color: Colors.white60),
                       filled: true,
                       fillColor: Colors.white10,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
@@ -130,7 +184,8 @@ class _ExplorePageState extends State<ExplorePage> {
                 Expanded(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      final double buttonWidth = constraints.maxWidth / filters.length;
+                      final double buttonWidth =
+                          constraints.maxWidth / filters.length;
                       return SizedBox(
                         height: 40,
                         child: Stack(
@@ -154,27 +209,34 @@ class _ExplorePageState extends State<ExplorePage> {
                               ),
                             ),
                             Row(
-                              children: filters.map((filter) {
-                                final isSelected = filter == selectedFilter;
-                                return Expanded(
-                                  child: GestureDetector(
-                                    onTap: () => _onFilterTap(filter),
-                                    child: Center(
-                                      child: AnimatedDefaultTextStyle(
-                                        duration: const Duration(milliseconds: 200),
-                                        style: TextStyle(
-                                          fontSize: isSelected ? 15 : 12,
-                                          fontWeight: isSelected
-                                              ? FontWeight.w600
-                                              : FontWeight.w400,
-                                          color: isSelected ? Colors.red : Colors.white70,
+                              children:
+                                  filters.map((filter) {
+                                    final isSelected = filter == selectedFilter;
+                                    return Expanded(
+                                      child: GestureDetector(
+                                        onTap: () => _onFilterTap(filter),
+                                        child: Center(
+                                          child: AnimatedDefaultTextStyle(
+                                            duration: const Duration(
+                                              milliseconds: 200,
+                                            ),
+                                            style: TextStyle(
+                                              fontSize: isSelected ? 15 : 12,
+                                              fontWeight:
+                                                  isSelected
+                                                      ? FontWeight.w600
+                                                      : FontWeight.w400,
+                                              color:
+                                                  isSelected
+                                                      ? Colors.red
+                                                      : Colors.white70,
+                                            ),
+                                            child: Text(filter.toUpperCase()),
+                                          ),
                                         ),
-                                        child: Text(filter.toUpperCase()),
                                       ),
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
+                                    );
+                                  }).toList(),
                             ),
                           ],
                         ),
@@ -187,11 +249,7 @@ class _ExplorePageState extends State<ExplorePage> {
                   padding: const EdgeInsets.fromLTRB(40, 0, 0, 0),
                   child: IconButton(
                     icon: const Icon(Icons.search, color: Colors.white),
-                    onPressed: () {
-                      setState(() {
-                        isSearching = true;
-                      });
-                    },
+                    onPressed: () => setState(() => isSearching = true),
                   ),
                 ),
               ],
@@ -199,61 +257,6 @@ class _ExplorePageState extends State<ExplorePage> {
         ],
       ),
     );
-  }
-
-  Future<void> _onCharacterTap(CharacterModel character) async {
-    if (currentUserId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Devi essere autenticato')),
-      );
-      return;
-    }
-    final uid = currentUserId!;
-
-    // Recupera o crea chatId per questo utente + character
-    final chatId = await _getOrCreateChatId(uid, character);
-
-    // Naviga a ChatPage con chatId
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ChatPage(character: character, chatId: chatId),
-      ),
-    );
-  }
-
-  Future<String> _getOrCreateChatId(String uid, CharacterModel character) async {
-    final userChatsRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('chats');
-
-    // 1. Cerca chat esistente con questo characterId
-    final querySnap = await userChatsRef
-        .where('characterId', isEqualTo: character.id)
-        .limit(1)
-        .get();
-    if (querySnap.docs.isNotEmpty) {
-      return querySnap.docs.first.id;
-    }
-
-    // 2. Non esiste: creane una nuova.
-    //    Usiamo character.id come doc ID per garantire una sola chat per utente/personaggio.
-    final newChatRef = userChatsRef.doc(character.id);
-    await newChatRef.set({
-      'characterId': character.id,
-      'characterName': character.name,
-      'lastMessage': '', // inizialmente vuoto o prompt iniziale
-      'unread': false,
-      'isFavorite': false,
-      'timestamp': FieldValue.serverTimestamp(),
-    });
-    return newChatRef.id;
-
-    // Se preferisci ID random, sostituisci con:
-    // final newDocRef = userChatsRef.doc();
-    // await newDocRef.set({ 'characterId': character.id, ... });
-    // return newDocRef.id;
   }
 
   @override
@@ -293,14 +296,25 @@ class _ExplorePageState extends State<ExplorePage> {
                         child: FutureBuilder<List<CharacterModel>>(
                           future: _charactersFuture,
                           builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.waiting) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
                               return const Center(
-                                child: CircularProgressIndicator(color: Colors.redAccent),
+                                child: CircularProgressIndicator(
+                                  color: Colors.redAccent,
+                                ),
                               );
-                            } else if (snapshot.hasError) {
-                              return Center(child: Text('Error: ${snapshot.error}'));
-                            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                              return const Center(child: Text('No characters found.'));
+                            }
+
+                            if (snapshot.hasError) {
+                              return const Center(
+                                child: Text('Error loading characters'),
+                              );
+                            }
+
+                            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                              return const Center(
+                                child: Text('No characters found.'),
+                              );
                             }
 
                             return PageView.builder(
@@ -312,32 +326,42 @@ class _ExplorePageState extends State<ExplorePage> {
 
                                 if (filters[pageIndex] == 'today') {
                                   final now = DateTime.now();
-                                  pageCharacters = _filteredCharacters.where((character) {
-                                    final createdAt = character.createdAt?.toDate();
-                                    return createdAt != null &&
-                                        createdAt.year == now.year &&
-                                        createdAt.month == now.month &&
-                                        createdAt.day == now.day;
-                                  }).toList();
+                                  pageCharacters =
+                                      _filteredCharacters.where((character) {
+                                        final createdAt =
+                                            character.createdAt?.toDate();
+                                        return createdAt != null &&
+                                            createdAt.year == now.year &&
+                                            createdAt.month == now.month &&
+                                            createdAt.day == now.day;
+                                      }).toList();
                                 } else {
                                   pageCharacters = _filteredCharacters;
                                 }
 
                                 if (pageCharacters.isEmpty) {
-                                  return const Center(child: Text('No characters for today.'));
+                                  return const Center(
+                                    child: Text('No characters for today.'),
+                                  );
                                 }
 
                                 return Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                  ),
                                   child: DynamicHeightGridView(
                                     itemCount: pageCharacters.length,
                                     crossAxisCount: 2,
                                     crossAxisSpacing: 20,
                                     mainAxisSpacing: 10,
-                                    builder: (ctx, index) => CharacterCard(
-                                      character: pageCharacters[index],
-                                      onTap: () => _onCharacterTap(pageCharacters[index]),
-                                    ),
+                                    builder:
+                                        (ctx, index) => CharacterCard(
+                                          character: pageCharacters[index],
+                                          onTap:
+                                              () => _onCharacterTap(
+                                                pageCharacters[index],
+                                              ),
+                                        ),
                                   ),
                                 );
                               },
@@ -351,13 +375,11 @@ class _ExplorePageState extends State<ExplorePage> {
               ),
             ),
 
-            // Overlay di connessione assente
             if (!hasConnection)
               Positioned.fill(
-                child: AbsorbPointer(
-                  absorbing: true,
+                child: IgnorePointer(
                   child: Container(
-                    color: Colors.black.withOpacity(0.75),
+                    color: const Color(0xBF000000), // Black with 75% opacity
                     child: const Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,

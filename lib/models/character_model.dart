@@ -33,7 +33,7 @@ class CharacterModel {
       description: data['description'] ?? '',
       prompt: data['prompt'] ?? '',
       imagePath: data['imagePath'] ?? 'assets/images/default.png',
-      createdAt: data['createdAt'], // <-- important
+      createdAt: data['createdAt'],
     );
   }
 
@@ -43,7 +43,7 @@ class CharacterModel {
       'description': description,
       'prompt': prompt,
       'imagePath': imagePath,
-      'createdAt': createdAt, // <-- important
+      'createdAt': createdAt,
     };
   }
 }

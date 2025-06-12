@@ -1,16 +1,16 @@
+// Tutti gli import rimangono invariati
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../cache/user_cache.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/connectivity_service.dart';
+import '../wrappers/login_page_wrapper.dart';
 import 'create_character.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
@@ -28,10 +28,10 @@ class _OptionProfileState extends State<OptionProfile> {
   final ConnectivityService _connectivityService = ConnectivityService();
 
   bool _isLoading = true;
-  String nickname = "Caricamento...";
+  String nickname = "Loading...";
   String email = "";
   bool isAvatarExpanded = false;
-  String? avatarBase64; // Base64 dell'avatar, es. "data:image/png;base64,..."
+  String? avatarBase64;
 
   User? get user => _authService.currentUser;
 
@@ -39,35 +39,30 @@ class _OptionProfileState extends State<OptionProfile> {
   void initState() {
     super.initState();
     _loadUserData();
-    // Non serve chiamare checkConnection, usiamo direttamente lo StreamBuilder su connectionStream
   }
 
   @override
   void dispose() {
-    // Se il ConnectivityService necessita di chiudere lo streamcontroller:
     _connectivityService.dispose();
     super.dispose();
   }
 
-  /// Carica nickname, email e avatarBase64 dal profilo Firestore o cache.
   Future<void> _loadUserData() async {
     if (user == null) return;
 
     setState(() => _isLoading = true);
 
-    // Se cache nickname/email presente, usalo subito
     if (UserCache.nickname != null && UserCache.email != null) {
       setState(() {
         nickname = UserCache.nickname!;
         email = UserCache.email!;
         _isLoading = false;
       });
-      // Carica avatar separatamente
       _loadAvatar();
       return;
     }
 
-    final userEmail = user!.email ?? "Email non disponibile";
+    final userEmail = user!.email ?? "Email not available";
     try {
       final profile = await _firestoreService.getUserProfile(user!.uid);
       if (profile != null) {
@@ -81,21 +76,20 @@ class _OptionProfileState extends State<OptionProfile> {
         UserCache.email = userEmail;
       } else {
         setState(() {
-          nickname = "Nickname non trovato";
+          nickname = "Nickname not found";
           email = userEmail;
           _isLoading = false;
         });
       }
     } catch (e) {
       setState(() {
-        nickname = "Errore caricamento nickname";
+        nickname = "Error loading nickname";
         email = userEmail;
         _isLoading = false;
       });
     }
   }
 
-  /// Carica solo avatar (se nickname/email erano in cache ma avatar no)
   Future<void> _loadAvatar() async {
     if (user == null) return;
     try {
@@ -105,12 +99,9 @@ class _OptionProfileState extends State<OptionProfile> {
           avatarBase64 = profile.imageBase64;
         });
       }
-    } catch (_) {
-      // Ignora errori avatar
-    }
+    } catch (_) {}
   }
 
-  /// Aggiorna nickname in Firestore e cache
   Future<void> _updateNickname(String newNickname) async {
     if (user == null) return;
 
@@ -125,19 +116,18 @@ class _OptionProfileState extends State<OptionProfile> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Errore aggiornamento nickname')),
+        const SnackBar(content: Text('Error updating nickname')),
       );
     }
   }
 
-  /// Seleziona immagine da galleria, converte in Base64 e salva in Firestore
   Future<void> _pickAndSaveImageBase64() async {
     if (user == null) return;
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
     if (pickedFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nessuna immagine selezionata')),
+        const SnackBar(content: Text('No image selected')),
       );
       return;
     }
@@ -152,15 +142,15 @@ class _OptionProfileState extends State<OptionProfile> {
       final compressedFile = await FlutterImageCompress.compressAndGetFile(
         pickedFile.path,
         targetPath,
-        quality: 40, // 0–100 (più basso = più compressione)
-        format: CompressFormat.jpeg, // più leggero di PNG
+        quality: 40,
+        format: CompressFormat.jpeg,
       );
 
-      if (compressedFile == null) throw Exception('Compressione fallita');
+      if (compressedFile == null) throw Exception('Compression failed');
 
       final bytes = await compressedFile.readAsBytes();
       final base64Image = base64Encode(bytes);
-      final fullBase64 = 'data:image/jpeg;base64,$base64Image'; // JPEG ora
+      final fullBase64 = 'data:image/jpeg;base64,$base64Image';
 
       await _firestoreService.updateUserAvatar(user!.uid, fullBase64);
 
@@ -169,12 +159,12 @@ class _OptionProfileState extends State<OptionProfile> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Immagine profilo aggiornata')),
+        const SnackBar(content: Text('Profile image updated')),
       );
     } catch (e) {
       print(e);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Errore nel caricamento dell\'immagine')),
+        const SnackBar(content: Text('Error uploading image')),
       );
     }
   }
@@ -201,19 +191,16 @@ class _OptionProfileState extends State<OptionProfile> {
                   final prefs = await SharedPreferences.getInstance();
                   await prefs.remove('remember_login');
                   UserCache.clear();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Logout effettuato')),
+
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => const LoginPageWrapper()),
+                        (Route<dynamic> route) => false,
                   );
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.settings, color: Colors.blueAccent),
-                title: Text("Preferenze", style: GoogleFonts.poppins(color: Colors.white)),
-                onTap: () => Navigator.pop(context),
-              ),
-              ListTile(
                 leading: const Icon(Icons.info_outline, color: Colors.green),
-                title: Text("Informazioni", style: GoogleFonts.poppins(color: Colors.white)),
+                title: Text("Information", style: GoogleFonts.poppins(color: Colors.white)),
                 onTap: () {
                   Navigator.pop(context);
                   showDialog(
@@ -224,7 +211,7 @@ class _OptionProfileState extends State<OptionProfile> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         title: Center(
                           child: Text(
-                            "Informazioni",
+                            "Information",
                             style: GoogleFonts.poppins(
                               color: Colors.white,
                               fontSize: 20,
@@ -241,10 +228,10 @@ class _OptionProfileState extends State<OptionProfile> {
                               Text("App: AI & Adventures",
                                   style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13)),
                               const SizedBox(height: 8),
-                              Text("Versione: 1.0.0",
+                              Text("Version: 1.0.0",
                                   style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13)),
                               const SizedBox(height: 8),
-                              Text("App sviluppata con Flutter, daje Roma!",
+                              Text("This application created for a university project, aims to entertain the user with ia chat interaction, we ask you to be patient with the untrained ia that may flicker occasionally.!",
                                   style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13)),
                             ],
                           ),
@@ -252,8 +239,7 @@ class _OptionProfileState extends State<OptionProfile> {
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(context),
-                            child: const Text("Chiudi",
-                                style: TextStyle(color: Colors.redAccent)),
+                            child: const Text("Close", style: TextStyle(color: Colors.redAccent)),
                           ),
                         ],
                       );
@@ -284,7 +270,7 @@ class _OptionProfileState extends State<OptionProfile> {
             children: [
               ListTile(
                 leading: const Icon(Icons.image, color: Colors.orange),
-                title: Text("Cambia immagine", style: GoogleFonts.poppins(color: Colors.white)),
+                title: Text("Change Image", style: GoogleFonts.poppins(color: Colors.white)),
                 onTap: () {
                   Navigator.pop(context);
                   _pickAndSaveImageBase64();
@@ -292,34 +278,33 @@ class _OptionProfileState extends State<OptionProfile> {
               ),
               ListTile(
                 leading: const Icon(Icons.edit, color: Colors.lightBlue),
-                title: Text("Cambia nickname", style: GoogleFonts.poppins(color: Colors.white)),
+                title: Text("Change Nickname", style: GoogleFonts.poppins(color: Colors.white)),
                 onTap: () {
                   Navigator.pop(context);
                   showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
                       backgroundColor: const Color(0xFF1E1B1B),
-                      title: Text("Modifica nickname",
-                          style: GoogleFonts.poppins(color: Colors.white)),
+                      title: Text("Edit Nickname", style: GoogleFonts.poppins(color: Colors.white)),
                       content: TextField(
                         controller: nicknameController,
                         style: const TextStyle(color: Colors.white),
                         decoration: const InputDecoration(
-                          hintText: "Inserisci nuovo nickname",
+                          hintText: "Enter new nickname",
                           hintStyle: TextStyle(color: Colors.white38),
                         ),
                       ),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(context),
-                          child: const Text("Annulla", style: TextStyle(color: Colors.red)),
+                          child: const Text("Cancel", style: TextStyle(color: Colors.red)),
                         ),
                         TextButton(
                           onPressed: () {
                             _updateNickname(nicknameController.text);
                             Navigator.pop(context);
                           },
-                          child: const Text("Salva", style: TextStyle(color: Colors.green)),
+                          child: const Text("Save", style: TextStyle(color: Colors.green)),
                         ),
                       ],
                     ),
@@ -333,7 +318,6 @@ class _OptionProfileState extends State<OptionProfile> {
     );
   }
 
-  /// Helper per ottenere ImageProvider da Base64
   ImageProvider? _getImageProviderFromBase64(String imagePath) {
     if (imagePath.startsWith('data:image')) {
       try {
@@ -429,9 +413,11 @@ class _OptionProfileState extends State<OptionProfile> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Text("Informazioni",
+                          Text("Information",
                               style: GoogleFonts.poppins(
-                                  fontSize: 18, fontWeight: FontWeight.w600, color: Colors.red)),
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.red)),
                           const SizedBox(height: 12),
                           Text("Nickname: $nickname",
                               style: GoogleFonts.poppins(fontSize: 16, color: Colors.white)),
@@ -456,11 +442,13 @@ class _OptionProfileState extends State<OptionProfile> {
                             padding: const EdgeInsets.fromLTRB(8, 0, 0, 5),
                             child: Text("Create a new character",
                                 style: GoogleFonts.poppins(
-                                    fontSize: 18, fontWeight: FontWeight.w600, color: Colors.red)),
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.red)),
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            "In this session you can create your own character to play against, think of a compelling story! Other players will also be able to see your created character.",
+                            "In this screen you can create your character! This character will be viewed by all players. *Tip: use an appropriate prompt, e.g., 'Behave like a dungeon master and let me face xxxxx in an epic and exciting battle!'",
                             textAlign: TextAlign.left,
                             style: GoogleFonts.poppins(fontSize: 14, color: Colors.white70),
                           ),
@@ -476,10 +464,13 @@ class _OptionProfileState extends State<OptionProfile> {
                               },
                               icon: const Icon(Icons.add, color: Colors.white),
                               label: Text("Create Character",
-                                  style: GoogleFonts.poppins(color: Colors.white, fontSize: 16)),
+                                  style: GoogleFonts.poppins(
+                                      color: Colors.white, fontSize: 16)),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.redAccent.withOpacity(0.8),
-                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                backgroundColor:
+                                const Color.fromRGBO(255, 82, 82, 0.8),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 24, vertical: 12),
                                 shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12)),
                               ),
@@ -492,23 +483,17 @@ class _OptionProfileState extends State<OptionProfile> {
                 ),
               ),
             ),
-
-            // Overlay di connessione assente
             if (!hasConnection)
               Positioned.fill(
                 child: AbsorbPointer(
                   absorbing: true,
                   child: Container(
-                    color: Colors.black.withOpacity(0.75),
+                    color: const Color.fromRGBO(0, 0, 0, 0.75),
                     child: const Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            Icons.wifi_off,
-                            color: Colors.redAccent,
-                            size: 50,
-                          ),
+                          Icon(Icons.wifi_off, color: Colors.redAccent, size: 50),
                           SizedBox(height: 16),
                           Text(
                             'Connection absent.\nCheck the network and try again.',

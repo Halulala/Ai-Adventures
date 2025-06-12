@@ -1,23 +1,19 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../models/character_model.dart';
 import '../services/firestore_service.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import 'dart:convert';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as path;
-
-
 
 class CreateCharacterPage extends StatefulWidget {
   const CreateCharacterPage({super.key});
 
   @override
   State<CreateCharacterPage> createState() => _CreateCharacterPageState();
-
 }
 
 class _CreateCharacterPageState extends State<CreateCharacterPage> {
@@ -25,92 +21,86 @@ class _CreateCharacterPageState extends State<CreateCharacterPage> {
   final nameController = TextEditingController();
   final descriptionController = TextEditingController();
   final promptController = TextEditingController();
-
-  final imagePathController = TextEditingController();
-
   final FirestoreService _firestoreService = FirestoreService();
-
-  File? _selectedImage;
-
   final ImagePicker _picker = ImagePicker();
+  File? _selectedImage;
 
   Future<void> _pickImage() async {
     final image = await _picker.pickImage(source: ImageSource.gallery);
-    final targetPath;
+    if (image == null) return;
+
     try {
-      final tempDir = await getTemporaryDirectory();
-      targetPath = path.join(tempDir.path, 'compressed_${path.basename(image!.path)}');
-
-      final compressedFile = await FlutterImageCompress.compressAndGetFile(
-        image.path,
-        targetPath,
-        quality: 40, // 0–100 (più basso = più compressione)
-        format: CompressFormat.jpeg, // più leggero di PNG
+      final bytes = await image.readAsBytes();
+      final compressedBytes = await FlutterImageCompress.compressWithList(
+        bytes,
+        minHeight: 800,
+        minWidth: 800,
+        quality: 40,
+        format: CompressFormat.jpeg,
       );
 
-      if (compressedFile == null) throw Exception('Compressione fallita');
+      final tempDir = await Directory.systemTemp.createTemp();
+      final file = File(
+        '${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg',
+      )..writeAsBytesSync(compressedBytes);
 
-      final bytes = await compressedFile.readAsBytes();
-      final base64Image = base64Encode(bytes);
-      final fullBase64 = 'data:image/jpeg;base64,$base64Image'; // JPEG ora
-
-      setState(() {
-        _selectedImage = File(targetPath);
-      });
-
+      if (!mounted) return;
+      setState(() => _selectedImage = file);
     } catch (e) {
-      print(e);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Errore nel caricamento dell\'immagine')),
-      );
-    }
-  }
-  void _saveCharacter() async {
-    if (_formKey.currentState!.validate()) {
-      String imageBase64 = '';
-
-      if (_selectedImage != null) {
-        final base64 = await imageFileToBase64(_selectedImage);
-        if (base64 != null) {
-          imageBase64 = base64;
-        }
-      }
-
-      final newCharacter = CharacterModel(
-        id: '',
-        name: nameController.text,
-        description: descriptionController.text,
-        prompt: promptController.text,
-        imagePath: imageBase64.isEmpty ? '' : imageBase64,
-      );
-
-      await _firestoreService.addCharacter(newCharacter);
-
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Character created')),
+        const SnackBar(content: Text('Error loading the \'image')),
       );
     }
   }
 
-  Future<String?> imageFileToBase64(File? imageFile) async {
-    if (imageFile == null) return null;
-    final bytes = await imageFile.readAsBytes();
-    return base64Encode(bytes);
+  Future<void> _saveCharacter() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    String imageBase64 = '';
+    if (_selectedImage != null) {
+      final bytes = await _selectedImage!.readAsBytes();
+      imageBase64 = base64Encode(bytes);
+    }
+
+    final newCharacter = CharacterModel(
+      id: '',
+      name: nameController.text,
+      description: descriptionController.text,
+      prompt: promptController.text,
+      imagePath: imageBase64,
+    );
+
+    await _firestoreService.addCharacter(newCharacter);
+
+    if (!mounted) return;
+    Navigator.pop(context);
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Character created')));
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    descriptionController.dispose();
+    promptController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    const backgroundColor = Color(0xFF1E1B1B);
-
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: const Color(0xFF1E1B1B),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
-          "Crea Personaggio",
-          style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600),
+          "Create Character",
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -120,47 +110,70 @@ class _CreateCharacterPageState extends State<CreateCharacterPage> {
           key: _formKey,
           child: ListView(
             children: [
-              _buildTextField(nameController, 'Nome', 'Inserisci un nome'),
-              _buildTextField(descriptionController, 'Descrizione', 'Inserisci una descrizione'),
+              _buildTextField(nameController, 'Name', 'Enter a name'),
+              _buildTextField(
+                descriptionController,
+                'Description',
+                'Enter a description',
+              ),
               _buildTextField(promptController, 'Prompt per l\'IA', null),
-              const SizedBox(height: 10),
+              const SizedBox(height: 16),
               Text(
-                'Immagine selezionata:',
+                'Selected image:',
                 style: GoogleFonts.poppins(color: Colors.white70),
               ),
               const SizedBox(height: 8),
               _selectedImage != null
                   ? Image.file(_selectedImage!, height: 200, fit: BoxFit.cover)
-                  : const Text('Nessuna immagine selezionata', style: TextStyle(color: Colors.white54)),
+                  : const Text(
+                    'No image selected',
+                    style: TextStyle(color: Colors.white54),
+                  ),
               const SizedBox(height: 16),
               Center(
-                child: ElevatedButton.icon(
+                child: FilledButton.icon(
                   onPressed: _pickImage,
                   icon: const Icon(Icons.image, color: Colors.white),
                   label: Text(
-                    'Inserisci immagine',
-                    style: GoogleFonts.poppins(color: Colors.white, fontSize: 16),
+                    'Insert image',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 16,
+                    ),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blueAccent.withOpacity(0.9),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.blueAccent,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
               const SizedBox(height: 30),
               Center(
-                child: ElevatedButton.icon(
+                child: FilledButton.icon(
                   onPressed: _saveCharacter,
                   icon: const Icon(Icons.save, color: Colors.white),
                   label: Text(
-                    'Salva',
-                    style: GoogleFonts.poppins(color: Colors.white, fontSize: 16),
+                    'Save',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 16,
+                    ),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent.withOpacity(0.9),
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
@@ -171,8 +184,11 @@ class _CreateCharacterPageState extends State<CreateCharacterPage> {
     );
   }
 
-
-  Widget _buildTextField(TextEditingController controller, String label, String? validatorText) {
+  Widget _buildTextField(
+    TextEditingController controller,
+    String label,
+    String? validatorText,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: TextFormField(
@@ -183,7 +199,10 @@ class _CreateCharacterPageState extends State<CreateCharacterPage> {
           labelStyle: GoogleFonts.poppins(color: Colors.white70),
           filled: true,
           fillColor: Colors.white10,
-          contentPadding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 20,
+            horizontal: 16,
+          ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: Colors.white30),
@@ -193,9 +212,10 @@ class _CreateCharacterPageState extends State<CreateCharacterPage> {
             borderSide: const BorderSide(color: Colors.white),
           ),
         ),
-        validator: validatorText != null
-            ? (value) => value!.isEmpty ? validatorText : null
-            : null,
+        validator:
+            validatorText != null
+                ? (value) => value!.isEmpty ? validatorText : null
+                : null,
       ),
     );
   }

@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-
 class RegisterPage extends StatefulWidget {
   final VoidCallback onRegisterSuccess;
   final VoidCallback onNavigateToLogin;
@@ -33,12 +32,12 @@ class _RegisterPageState extends State<RegisterPage> {
     final authService = AuthService();
 
     if (passwordController.text != confirmPasswordController.text) {
-      _showMessage("Le password non coincidono.");
+      _showMessage("Passwords do not match.");
       return;
     }
 
     if (passwordController.text.length < 6) {
-      _showMessage("La password deve essere di almeno 6 caratteri.");
+      _showMessage("The password must be at least 6 characters.");
       return;
     }
 
@@ -57,24 +56,26 @@ class _RegisterPageState extends State<RegisterPage> {
         widget.onRegisterSuccess();
       }
     } on FirebaseAuthException catch (e) {
-      String message = "Errore durante la registrazione.";
+      String message = "Error during registration.";
       if (e.code == 'email-already-in-use') {
-        message = "Questa email è già registrata.";
+        message = "This email is already registered.";
       } else if (e.code == 'invalid-email') {
-        message = "L'indirizzo email non è valido.";
+        message = "The email address is invalid.";
       } else if (e.code == 'weak-password') {
-        message = "La password è troppo debole.";
+        message = "The password is too weak.";
       }
       _showMessage(message);
     } catch (e) {
-      _showMessage("Errore sconosciuto: $e");
+      _showMessage("Unknown error: $e");
     } finally {
       setState(() => isLoading = false);
     }
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -90,35 +91,76 @@ class _RegisterPageState extends State<RegisterPage> {
               const SizedBox(height: 40),
               const Icon(Icons.person_add, size: 80, color: Colors.redAccent),
               const SizedBox(height: 20),
-              Text('Registrazione', style: GoogleFonts.pixelifySans(fontSize: 32, color: Colors.white)),
+              Text(
+                'Registration',
+                style: GoogleFonts.pixelifySans(
+                  fontSize: 32,
+                  color: Colors.white,
+                ),
+              ),
               const SizedBox(height: 40),
 
-              _buildTextField(nameController, "Nome"),
-              _buildTextField(surnameController, "Cognome"),
+              _buildTextField(nameController, "Name"),
+              _buildTextField(surnameController, "Surname"),
               _buildTextField(usernameController, "Nickname"),
-              _buildTextField(emailController, "Email", keyboardType: TextInputType.emailAddress, hint: "esempio@mail.com"),
-              _buildTextField(passwordController, "Password", obscure: true, hint: "Almeno 6 caratteri"),
-              _buildTextField(confirmPasswordController, "Conferma Password", obscure: true),
+              _buildTextField(
+                emailController,
+                "Email",
+                keyboardType: TextInputType.emailAddress,
+                hint: "example@mail.com",
+              ),
+              _buildTextField(
+                passwordController,
+                "Password",
+                obscure: true,
+                hint: "At least 6 characters",
+              ),
+              _buildTextField(
+                confirmPasswordController,
+                "Confirm Password",
+                obscure: true,
+              ),
               const SizedBox(height: 30),
 
               SizedBox(
                 height: 50,
                 child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                   onPressed: isLoading ? null : _handleRegister,
-                  child: isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : Text('REGISTRATI', style: GoogleFonts.poppins(fontSize: 18, color: Colors.white)),
+                  child:
+                      isLoading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : Text(
+                            'REGISTER',
+                            style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              color: Colors.white,
+                            ),
+                          ),
                 ),
               ),
               const SizedBox(height: 16),
               TextButton(
                 onPressed: widget.onNavigateToLogin,
-                child: const Text("Sei già registrato? Accedi", style: TextStyle(color: Colors.white70)),
+                child: const Text(
+                  "Are you already registered? Sign in",
+                  style: TextStyle(color: Colors.white70),
+                ),
               ),
               const SizedBox(height: 12),
-              const Text("* Inserire una email valida", style: TextStyle(color: Colors.white54, fontSize: 12)),
-              const Text("* La password deve essere di almeno 6 caratteri", style: TextStyle(color: Colors.white54, fontSize: 12)),
+              const Text(
+                "* Enter a valid email",
+                style: TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+              const Text(
+                "* The password must be at least 6 characters long",
+                style: TextStyle(color: Colors.white54, fontSize: 12),
+              ),
               const SizedBox(height: 40),
             ],
           ),
@@ -128,12 +170,12 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Widget _buildTextField(
-      TextEditingController controller,
-      String label, {
-        bool obscure = false,
-        String? hint,
-        TextInputType keyboardType = TextInputType.text,
-      }) {
+    TextEditingController controller,
+    String label, {
+    bool obscure = false,
+    String? hint,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: TextField(
@@ -154,7 +196,10 @@ class _RegisterPageState extends State<RegisterPage> {
       hintStyle: const TextStyle(color: Colors.white38),
       filled: true,
       fillColor: Colors.white10,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
     );
   }
 }

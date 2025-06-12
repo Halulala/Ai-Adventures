@@ -7,7 +7,7 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/character_model.dart';
-import '../models/chat_model.dart'; // contiene MessageModel
+import '../models/chat_model.dart';
 import '../services/connectivity_service.dart';
 import '../services/firestore_service.dart';
 import '../widgets/chat/typing_indicator.dart';
@@ -19,33 +19,25 @@ class ChatPage extends StatefulWidget {
   final CharacterModel character;
   final String chatId;
 
-  const ChatPage({
-    super.key,
-    required this.character,
-    required this.chatId,
-  });
+  const ChatPage({super.key, required this.character, required this.chatId});
 
   @override
   State<ChatPage> createState() => _ChatPageState();
 }
 
 class _ChatPageState extends State<ChatPage> {
-  // Servizi e Controller
   final firestoreService = FirestoreService();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ConnectivityService _connectivityService = ConnectivityService();
 
-  // Stato della UI e dei dati
   List<MessageModel> messages = [];
   bool _isTyping = false;
-  bool _isInitializing = true; // Stato per il caricamento iniziale
+  bool _isInitializing = true;
 
-  // AI & Chat
   late final GenerativeModel _model;
   late ChatSession _chat;
 
-  // Dati utente e widget
   late final String chatId;
   late final Widget _cachedBackgroundImage;
   String? currentUserId;
@@ -74,7 +66,6 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<void> _initializeChat() async {
-    // Se l'utente non è loggato, esci e disattiva il caricamento per non bloccare la UI.
     if (currentUserId == null) {
       if (mounted) {
         setState(() => _isInitializing = false);
@@ -98,7 +89,6 @@ class _ChatPageState extends State<ChatPage> {
     _chat = _model.startChat(history: history);
 
     if (loadedMessages.isEmpty && widget.character.prompt.trim().isNotEmpty) {
-      // Attendi 3 secondi solo al primo avvio di una chat vuota
       await Future.delayed(const Duration(seconds: 3));
 
       final geminiResponse = await _chat.sendMessage(
@@ -119,7 +109,6 @@ class _ChatPageState extends State<ChatPage> {
       loadedMessages.add(aiMessage);
     }
 
-    // A fine processo, aggiorna la UI e disattiva la schermata di caricamento.
     if (mounted) {
       setState(() {
         messages = loadedMessages;
@@ -134,7 +123,9 @@ class _ChatPageState extends State<ChatPage> {
     if (text.isEmpty) return;
     if (currentUserId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Devi essere autenticato per inviare messaggi')),
+        const SnackBar(
+          content: Text('Devi essere autenticato per inviare messaggi'),
+        ),
       );
       return;
     }
@@ -164,7 +155,7 @@ class _ChatPageState extends State<ChatPage> {
       text: aiReply ?? "Scusa, non ho capito. Puoi ripetere?",
       timestamp: DateTime.now(),
     );
-    if(mounted) {
+    if (mounted) {
       setState(() {
         messages.add(aiMessage);
         _isTyping = false;
@@ -204,24 +195,27 @@ class _ChatPageState extends State<ChatPage> {
         ],
       );
     } catch (e) {
-      debugPrint('Errore decodifica immagine Base64: $e');
       return Container(color: fallbackBackgroundColor);
     }
   }
 
   Widget _buildMessageBubble(MessageModel msg, bool isUser) {
-    final bubbleColor = isUser
-        ? Colors.blueAccent.withAlpha(230)
-        : Colors.grey.shade900.withAlpha(217);
+    final bubbleColor =
+        isUser
+            ? Colors.blueAccent.withAlpha(230)
+            : Colors.grey.shade900.withAlpha(217);
     final borderRadius = BorderRadius.only(
       topLeft: const Radius.circular(16),
       topRight: const Radius.circular(16),
       bottomLeft: Radius.circular(isUser ? 16 : 0),
       bottomRight: Radius.circular(isUser ? 0 : 16),
     );
-    final triangle = CustomPaint(painter: BubbleTailPainter(color: bubbleColor, isUser: isUser));
+    final triangle = CustomPaint(
+      painter: BubbleTailPainter(color: bubbleColor, isUser: isUser),
+    );
     return Row(
-      mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+      mainAxisAlignment:
+          isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         if (!isUser) triangle,
@@ -229,8 +223,18 @@ class _ChatPageState extends State<ChatPage> {
           child: Container(
             margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: bubbleColor, borderRadius: borderRadius),
-            child: Text(msg.text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.4)),
+            decoration: BoxDecoration(
+              color: bubbleColor,
+              borderRadius: borderRadius,
+            ),
+            child: Text(
+              msg.text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                height: 1.4,
+              ),
+            ),
           ),
         ),
         if (isUser) triangle,
@@ -259,116 +263,174 @@ class _ChatPageState extends State<ChatPage> {
                     Positioned.fill(
                       child: IgnorePointer(child: _cachedBackgroundImage),
                     ),
-                    // Logica condizionale per mostrare il caricamento o la chat
                     _isInitializing
-                        ? const Center(child: CircularProgressIndicator(color: Colors.redAccent))
+                        ? const Center(
+                          child: CircularProgressIndicator(
+                            color: Colors.redAccent,
+                          ),
+                        )
                         : Padding(
-                      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-                      child: Column(
-                        children: [
-                          Expanded(
-                            child: KeyboardVisibilityBuilder(
-                              builder: (context, isKeyboardVisible) {
-                                return GestureDetector(
-                                  onTap: () {
-                                    if (isKeyboardVisible) {
-                                      FocusScope.of(context).unfocus();
-                                    }
-                                  },
-                                  child: ListView.builder(
-                                    controller: _scrollController,
-                                    padding: const EdgeInsets.all(10),
-                                    itemCount: messages.length + (_isTyping ? 1 : 0),
-                                    itemBuilder: (context, index) {
-                                      if (index < messages.length) {
-                                        final msg = messages[index];
-                                        final isUser = msg.sender == 'Tu';
-                                        return _buildMessageBubble(msg, isUser);
-                                      } else {
-                                        return Padding(
-                                          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6),
-                                          child: Row(
-                                            crossAxisAlignment: CrossAxisAlignment.end,
-                                            children: [
-                                              CustomPaint(
-                                                painter: BubbleTailPainter(
-                                                  color: Colors.grey.shade900.withAlpha(217),
-                                                  isUser: false,
-                                                ),
-                                              ),
-                                              Flexible(
-                                                child: Container(
-                                                  margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
-                                                  padding: const EdgeInsets.all(12),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.grey.shade900.withAlpha(217),
-                                                    borderRadius: const BorderRadius.only(
-                                                      topLeft: Radius.circular(16),
-                                                      topRight: Radius.circular(16),
-                                                      bottomRight: Radius.circular(16),
+                          padding: EdgeInsets.only(
+                            bottom: MediaQuery.of(context).viewInsets.bottom,
+                          ),
+                          child: Column(
+                            children: [
+                              Expanded(
+                                child: KeyboardVisibilityBuilder(
+                                  builder: (context, isKeyboardVisible) {
+                                    return GestureDetector(
+                                      onTap: () {
+                                        if (isKeyboardVisible) {
+                                          FocusScope.of(context).unfocus();
+                                        }
+                                      },
+                                      child: ListView.builder(
+                                        controller: _scrollController,
+                                        padding: const EdgeInsets.all(10),
+                                        itemCount:
+                                            messages.length +
+                                            (_isTyping ? 1 : 0),
+                                        itemBuilder: (context, index) {
+                                          if (index < messages.length) {
+                                            final msg = messages[index];
+                                            final isUser = msg.sender == 'Tu';
+                                            return _buildMessageBubble(
+                                              msg,
+                                              isUser,
+                                            );
+                                          } else {
+                                            return Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12.0,
+                                                    vertical: 6,
+                                                  ),
+                                              child: Row(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.end,
+                                                children: [
+                                                  CustomPaint(
+                                                    painter: BubbleTailPainter(
+                                                      color: Colors
+                                                          .grey
+                                                          .shade900
+                                                          .withAlpha(217),
+                                                      isUser: false,
                                                     ),
                                                   ),
-                                                  child: const TypingIndicator(),
-                                                ),
+                                                  Flexible(
+                                                    child: Container(
+                                                      margin:
+                                                          const EdgeInsets.symmetric(
+                                                            vertical: 4,
+                                                            horizontal: 6,
+                                                          ),
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                            12,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors
+                                                            .grey
+                                                            .shade900
+                                                            .withAlpha(217),
+                                                        borderRadius:
+                                                            const BorderRadius.only(
+                                                              topLeft:
+                                                                  Radius.circular(
+                                                                    16,
+                                                                  ),
+                                                              topRight:
+                                                                  Radius.circular(
+                                                                    16,
+                                                                  ),
+                                                              bottomRight:
+                                                                  Radius.circular(
+                                                                    16,
+                                                                  ),
+                                                            ),
+                                                      ),
+                                                      child:
+                                                          const TypingIndicator(),
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
-                                            ],
+                                            );
+                                          }
+                                        },
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              Container(
+                                color: Colors.black.withAlpha(230),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 12,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextField(
+                                        controller: _messageController,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                        ),
+                                        decoration: const InputDecoration(
+                                          hintText: 'Scrivi un messaggio...',
+                                          hintStyle: TextStyle(
+                                            color: Colors.grey,
                                           ),
-                                        );
-                                      }
-                                    },
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          // Barra di input
-                          Container(
-                            color: Colors.black.withAlpha(230),
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _messageController,
-                                    style: const TextStyle(color: Colors.white),
-                                    decoration: const InputDecoration(
-                                      hintText: 'Scrivi un messaggio...',
-                                      hintStyle: TextStyle(color: Colors.grey),
-                                      border: InputBorder.none,
+                                          border: InputBorder.none,
+                                        ),
+                                        onSubmitted:
+                                            hasConnection
+                                                ? (_) => _sendMessage()
+                                                : null,
+                                      ),
                                     ),
-                                    onSubmitted: hasConnection ? (_) => _sendMessage() : null,
-                                  ),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.send,
+                                        color: Colors.white,
+                                      ),
+                                      onPressed:
+                                          hasConnection ? _sendMessage : null,
+                                    ),
+                                  ],
                                 ),
-                                IconButton(
-                                  icon: const Icon(Icons.send, color: Colors.white),
-                                  onPressed: hasConnection ? _sendMessage : null,
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
+                        ),
                   ],
                 ),
               ),
-              // Overlay per la connessione assente
               if (!hasConnection)
                 Positioned.fill(
                   child: AbsorbPointer(
                     absorbing: true,
                     child: Container(
-                      color: Colors.black.withOpacity(0.75),
+                      color: Colors.black.withAlpha(191),
                       child: const Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.wifi_off, color: Colors.redAccent, size: 50),
+                            Icon(
+                              Icons.wifi_off,
+                              color: Colors.redAccent,
+                              size: 50,
+                            ),
                             SizedBox(height: 16),
                             Text(
                               'Connessione assente.\nControlla la rete e riprova.',
                               textAlign: TextAlign.center,
-                              style: TextStyle(color: Colors.white, fontSize: 16),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
                             ),
                           ],
                         ),
