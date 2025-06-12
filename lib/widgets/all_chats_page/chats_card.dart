@@ -9,7 +9,7 @@ class ChatCard extends StatelessWidget {
   final VoidCallback onRemoveFromFavorites;
   final VoidCallback onDelete;
   final VoidCallback onLongPress;
-  final VoidCallback onTap; // obbligatorio ora
+  final VoidCallback onTap;
 
   const ChatCard({
     super.key,
@@ -82,7 +82,7 @@ class ChatCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    chat['unreadCount']!,
+                    "!!",
                     style: const TextStyle(color: Colors.white, fontSize: 12),
                   ),
                 ),
@@ -94,11 +94,9 @@ class ChatCard extends StatelessWidget {
   }
 
   ImageProvider? _getImageProvider(String imagePath) {
-    // Se asset, ritorna AssetImage
     if (imagePath.startsWith('assets/')) {
       return AssetImage(imagePath);
     }
-    // Altrimenti prova base64
     try {
       final parts = imagePath.split(',');
       final base64Data = parts.length > 1 ? parts.last : imagePath;

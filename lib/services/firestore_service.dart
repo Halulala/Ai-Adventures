@@ -6,10 +6,13 @@ import '../models/chat_model.dart';
 import '../models/user_model.dart';
 
 class FirestoreService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final CollectionReference characterCollection = FirebaseFirestore.instance
-      .collection('characters');
+  final FirebaseFirestore _firestore;
+  late final CollectionReference characterCollection;
 
+  FirestoreService({FirebaseFirestore? firestore})
+      : _firestore = firestore ?? FirebaseFirestore.instance {
+    characterCollection = _firestore.collection('characters');
+  }
   Future<List<CharacterModel>> fetchCharacters() async {
     final snapshot = await characterCollection.get();
     return snapshot.docs
@@ -136,7 +139,6 @@ class FirestoreService {
         .collection('chats')
         .doc(chatId);
 
-    // 1. Recupera characterId esistente
     String existingCharacterId = '';
     try {
       final chatSnap = await chatRef.get();
@@ -178,11 +180,9 @@ class FirestoreService {
         .collection('chats')
         .doc(chatId);
 
-    // Aggiungi il messaggio
     final messagesRef = chatRef.collection('messages');
     await messagesRef.add(message.toMap());
 
-    // Aggiorna chat con il characterId fornito
     final updateData = <String, dynamic>{
       'characterId': characterId,
       'lastMessage': message.text,
@@ -195,7 +195,6 @@ class FirestoreService {
     await chatRef.set(updateData, SetOptions(merge: true));
   }
 
-  /// Recupera tutti i messaggi di una chat specifica per un utente
   Future<List<MessageModel>> getMessages({
     required String uid,
     required String chatId,

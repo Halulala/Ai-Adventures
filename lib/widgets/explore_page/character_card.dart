@@ -6,7 +6,7 @@ import '../../models/character_model.dart';
 
 class CharacterCard extends StatelessWidget {
   final CharacterModel character;
-  final VoidCallback onTap; // callback obbligatorio
+  final VoidCallback onTap;
 
   const CharacterCard({
     required this.character,
@@ -14,14 +14,11 @@ class CharacterCard extends StatelessWidget {
     super.key,
   });
 
-  /// Restituisce il widget per l’immagine del character.
-  /// Se base64String è vuoto o non decodificabile, ritorna un Container grigio scuro.
   Widget _buildImageFromBase64(String base64String) {
-    const placeholderColor = Color(0xFF333333); // grigio scuro
+    const placeholderColor = Color(0xFF333333);
     const imageHeight = 200.0;
 
     if (base64String.isEmpty) {
-      // Nessuna immagine Base64: placeholder
       return Container(
         height: imageHeight,
         width: double.infinity,
@@ -36,8 +33,6 @@ class CharacterCard extends StatelessWidget {
         width: double.infinity,
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) {
-          // Se l’Image.memory, per qualche motivo, non riesce a mostrare,
-          // ricadiamo sul placeholder grigio.
           return Container(
             height: imageHeight,
             width: double.infinity,
@@ -46,7 +41,6 @@ class CharacterCard extends StatelessWidget {
         },
       );
     } catch (e) {
-      // Errore di decodifica: placeholder
       debugPrint(
         'Error decoding base64 image for ${character.name}: $e. Using placeholder.',
       );
@@ -60,7 +54,7 @@ class CharacterCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const placeholderColor = Color(0xFF333333); // grigio scuro
+    const placeholderColor = Color(0xFF333333);
     const imageHeight = 200.0;
 
     debugPrint(
@@ -70,7 +64,6 @@ class CharacterCard extends StatelessWidget {
     Widget characterImage;
 
     if (character.imagePath.isEmpty) {
-      // Se la stringa è vuota => placeholder
       characterImage = Container(
         height: imageHeight,
         width: double.infinity,
@@ -78,7 +71,6 @@ class CharacterCard extends StatelessWidget {
       );
     }
     else if (character.imagePath.startsWith('assets/')) {
-      // Proviamo a caricare da asset; se fallisce, mettiamo placeholder
       characterImage = Image.asset(
         character.imagePath,
         height: imageHeight,
@@ -94,7 +86,6 @@ class CharacterCard extends StatelessWidget {
         },
       );
     } else {
-      // Supponiamo Base64
       final parts = character.imagePath.split(',');
       final base64Data = parts.length > 1 ? parts.last : character.imagePath;
       characterImage = _buildImageFromBase64(base64Data);
@@ -108,9 +99,7 @@ class CharacterCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           child: Stack(
             children: [
-              // Immagine o placeholder
               characterImage,
-              // Overlay con nome/descrizione
               Positioned(
                 bottom: 0,
                 left: 0,
@@ -123,7 +112,7 @@ class CharacterCard extends StatelessWidget {
                       end: Alignment.bottomCenter,
                       colors: [
                         Colors.transparent,
-                        Colors.black.withOpacity(0.7),
+                        Colors.black.withAlpha(230),
                       ],
                     ),
                   ),

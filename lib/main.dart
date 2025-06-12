@@ -6,7 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:progetto/screens/main_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'firebase_options.dart'; // Generato da flutterfire
+import 'firebase_options.dart';
 import 'wrappers/login_page_wrapper.dart';
 
 void main() async {

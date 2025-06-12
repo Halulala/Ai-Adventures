@@ -121,10 +121,10 @@ class _OptionProfileState extends State<OptionProfile> {
     }
   }
 
-  Future<void> _pickAndSaveImageBase64() async {
+  Future<void> _pickAndSaveImageBase64(ImageSource source) async {
     if (user == null) return;
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    final pickedFile = await picker.pickImage(source: source);
     if (pickedFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No image selected')),
@@ -133,25 +133,37 @@ class _OptionProfileState extends State<OptionProfile> {
     }
 
     try {
-      final tempDir = await getTemporaryDirectory();
-      final targetPath = path.join(
-        tempDir.path,
-        'compressed_${path.basename(pickedFile.path)}',
-      );
+      final originalSize = await pickedFile.length();
+      XFile fileToProcess = pickedFile;
 
-      final compressedFile = await FlutterImageCompress.compressAndGetFile(
-        pickedFile.path,
-        targetPath,
-        quality: 40,
-        format: CompressFormat.jpeg,
-      );
+      const int soglia1MB = 1 * 1024 * 1024;
+      if (originalSize > soglia1MB) {
+        final tempDir = await getTemporaryDirectory();
+        final targetPath = path.join(
+          tempDir.path,
+          'compressed_${path.basename(pickedFile.path)}',
+        );
 
-      if (compressedFile == null) throw Exception('Compression failed');
+        final compressedFile = await FlutterImageCompress.compressAndGetFile(
+          pickedFile.path,
+          targetPath,
+          quality: 40, // puoi regolare la qualità se vuoi
+          format: CompressFormat.jpeg,
+        );
 
-      final bytes = await compressedFile.readAsBytes();
+        if (compressedFile != null) {
+          fileToProcess = XFile(compressedFile.path);
+        } else {
+          // In caso di fallimento compressione, prosegui con il file originale
+          // (opzionale: potresti notificare l'utente)
+        }
+      }
+      // Leggi bytes (sia compressi sia non compressi)
+      final bytes = await fileToProcess.readAsBytes();
       final base64Image = base64Encode(bytes);
       final fullBase64 = 'data:image/jpeg;base64,$base64Image';
 
+      // Salva su Firestore
       await _firestoreService.updateUserAvatar(user!.uid, fullBase64);
 
       setState(() {
@@ -162,12 +174,13 @@ class _OptionProfileState extends State<OptionProfile> {
         const SnackBar(content: Text('Profile image updated')),
       );
     } catch (e) {
-      print(e);
+      print('Errore upload image: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Error uploading image')),
       );
     }
   }
+
 
   void _showOptionsBottomSheet() {
     showModalBottomSheet(
@@ -273,7 +286,7 @@ class _OptionProfileState extends State<OptionProfile> {
                 title: Text("Change Image", style: GoogleFonts.poppins(color: Colors.white)),
                 onTap: () {
                   Navigator.pop(context);
-                  _pickAndSaveImageBase64();
+                  _showImageSourceSheet();
                 },
               ),
               ListTile(
@@ -317,6 +330,51 @@ class _OptionProfileState extends State<OptionProfile> {
       },
     );
   }
+
+  void _showImageSourceSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E1B1B),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_camera, color: Colors.white),
+                title: Text("Scatta foto", style: GoogleFonts.poppins(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickAndSaveImageBase64(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: Colors.white),
+                title: Text("Scegli dalla galleria", style: GoogleFonts.poppins(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickAndSaveImageBase64(ImageSource.gallery);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.close, color: Colors.red),
+                title: Text("Annulla", style: GoogleFonts.poppins(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+
 
   ImageProvider? _getImageProviderFromBase64(String imagePath) {
     if (imagePath.startsWith('data:image')) {
