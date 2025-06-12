@@ -8,7 +8,6 @@ import '../services/firestore_service.dart';
 import '../widgets/chat/typing_indicator.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 
-
 const Color _backgroundImageOverlayColor = Colors.black54;
 
 class ChatPage extends StatefulWidget {
@@ -39,9 +38,6 @@ class _ChatPageState extends State<ChatPage> {
     _cachedBackgroundImage = _buildImageFromBase64(widget.character.imagePath);
     chatId = '${widget.character.id}';
 
-    // NOTA IMPORTANTE: La tua chiave API è visibile qui. Questo non è sicuro per un'app
-    // di produzione. Considera l'uso di variabili d'ambiente o di un servizio
-    // di backend per proteggerla e non esporla mai nel codice client.
     _model = GenerativeModel(
       model: 'gemini-1.5-flash',
       apiKey: 'AIzaSyA5o1ANvM0eBZsYxzCTw7X7JogudVl4lj0',
@@ -85,9 +81,9 @@ class _ChatPageState extends State<ChatPage> {
       setState(() {
         messages = loadedMessages;
       });
-    }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    }
   }
 
   Future<void> _sendMessage() async {
@@ -102,10 +98,11 @@ class _ChatPageState extends State<ChatPage> {
 
     setState(() {
       messages.add(userMessage);
-      _isTyping = true; // Mostra "sta scrivendo"
+      _isTyping = true;
       _messageController.clear();
     });
-    _scrollToBottom();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 
     await firestoreService.addMessage(chatId, userMessage);
 
@@ -120,13 +117,13 @@ class _ChatPageState extends State<ChatPage> {
 
     setState(() {
       messages.add(aiMessage);
-      _isTyping = false; // Nasconde "sta scrivendo"
+      _isTyping = false;
     });
-    _scrollToBottom();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 
     await firestoreService.addMessage(chatId, aiMessage);
   }
-
 
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
@@ -142,9 +139,7 @@ class _ChatPageState extends State<ChatPage> {
     const Color fallbackBackgroundColor = Color(0xFF121212);
 
     if (base64String.isEmpty) {
-      return Container(
-        color: fallbackBackgroundColor,
-      );
+      return Container(color: fallbackBackgroundColor);
     }
 
     try {
@@ -152,27 +147,20 @@ class _ChatPageState extends State<ChatPage> {
       return Stack(
         fit: StackFit.expand,
         children: [
-          Image.memory(
-            bytes,
-            fit: BoxFit.cover,
-          ),
-          Container(
-            color: _backgroundImageOverlayColor,
-          ),
+          Image.memory(bytes, fit: BoxFit.cover),
+          Container(color: _backgroundImageOverlayColor),
         ],
       );
     } catch (e) {
       debugPrint('Errore decodifica immagine Base64: $e');
-      return Container(
-        color: fallbackBackgroundColor,
-      );
+      return Container(color: fallbackBackgroundColor);
     }
   }
 
   Widget _buildMessageBubble(MessageModel msg, bool isUser) {
     final bubbleColor = isUser
-        ? Colors.blueAccent.withAlpha(230) // Equivalente a .withOpacity(0.9)
-        : Colors.grey.shade900.withAlpha(217); // Equivalente a .withOpacity(0.85)
+        ? Colors.blueAccent.withAlpha(230)
+        : Colors.grey.shade900.withAlpha(217);
 
     final borderRadius = BorderRadius.only(
       topLeft: const Radius.circular(16),
@@ -217,8 +205,6 @@ class _ChatPageState extends State<ChatPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Impedisce allo Scaffold di ridimensionarsi quando appare la tastiera,
-      // mantenendo lo sfondo a dimensione intera.
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
         title: Text(widget.character.name),
@@ -226,16 +212,13 @@ class _ChatPageState extends State<ChatPage> {
       ),
       body: Stack(
         children: [
-          // Sfondo fisso
           Positioned.fill(
-            child: IgnorePointer(
-              child: _cachedBackgroundImage,
-            ),
+            child: IgnorePointer(child: _cachedBackgroundImage),
           ),
-          // Contenuto della UI che si sposta sopra la tastiera
           Padding(
-            // Aggiunge uno spazio inferiore pari all'altezza della tastiera
-            padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
             child: Column(
               children: [
                 Expanded(
@@ -258,23 +241,28 @@ class _ChatPageState extends State<ChatPage> {
                               return _buildMessageBubble(msg, isUser);
                             } else {
                               return Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12.0, vertical: 6),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
                                     CustomPaint(
                                       painter: BubbleTailPainter(
-                                        color: Colors.grey.shade900.withAlpha(217),
+                                        color: Colors.grey.shade900
+                                            .withAlpha(217),
                                         isUser: false,
                                       ),
                                     ),
                                     Flexible(
                                       child: Container(
-                                        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+                                        margin: const EdgeInsets.symmetric(
+                                            vertical: 4, horizontal: 6),
                                         padding: const EdgeInsets.all(12),
                                         decoration: BoxDecoration(
-                                          color: Colors.grey.shade900.withAlpha(217),
-                                          borderRadius: const BorderRadius.only(
+                                          color: Colors.grey.shade900
+                                              .withAlpha(217),
+                                          borderRadius:
+                                          const BorderRadius.only(
                                             topLeft: Radius.circular(16),
                                             topRight: Radius.circular(16),
                                             bottomRight: Radius.circular(16),
@@ -293,10 +281,10 @@ class _ChatPageState extends State<ChatPage> {
                     },
                   ),
                 ),
-                // Barra di input del messaggio
                 Container(
                   color: Colors.black.withAlpha(230),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 12),
                   child: Row(
                     children: [
                       Expanded(
@@ -350,8 +338,6 @@ class BubbleTailPainter extends CustomPainter {
     path.close();
     canvas.drawPath(path, paint);
   }
-
-  Size get size => const Size(10, 12);
 
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
