@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -16,7 +17,7 @@ const Color _backgroundImageOverlayColor = Colors.black54;
 
 class ChatPage extends StatefulWidget {
   final CharacterModel character;
-  final String chatId; // aggiunto
+  final String chatId;
 
   const ChatPage({
     super.key,
@@ -29,19 +30,24 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatPageState extends State<ChatPage> {
-  late final String chatId;
+  // Servizi e Controller
   final firestoreService = FirestoreService();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ConnectivityService _connectivityService = ConnectivityService();
 
+  // Stato della UI e dei dati
   List<MessageModel> messages = [];
   bool _isTyping = false;
+  bool _isInitializing = true; // Stato per il caricamento iniziale
 
+  // AI & Chat
   late final GenerativeModel _model;
   late ChatSession _chat;
-  late final Widget _cachedBackgroundImage;
 
+  // Dati utente e widget
+  late final String chatId;
+  late final Widget _cachedBackgroundImage;
   String? currentUserId;
 
   @override
@@ -53,21 +59,34 @@ class _ChatPageState extends State<ChatPage> {
 
     _model = GenerativeModel(
       model: 'gemini-1.5-flash',
-      apiKey: 'AIzaSyA5o1ANvM0eBZsYxzCTw7X7JogudVl4lj0',
+      apiKey: dotenv.env['GEMINI_API_KEY']!,
     );
 
     _initializeChat();
   }
 
+  @override
+  void dispose() {
+    _messageController.dispose();
+    _scrollController.dispose();
+    _connectivityService.dispose();
+    super.dispose();
+  }
+
   Future<void> _initializeChat() async {
-    if (currentUserId == null) return;
-    // Carica messaggi esistenti
+    // Se l'utente non è loggato, esci e disattiva il caricamento per non bloccare la UI.
+    if (currentUserId == null) {
+      if (mounted) {
+        setState(() => _isInitializing = false);
+      }
+      return;
+    }
+
     final loadedMessages = await firestoreService.getMessages(
       uid: currentUserId!,
       chatId: chatId,
     );
 
-    // Costruisci la storia per il model
     final List<Content> history = [];
     for (final msg in loadedMessages) {
       if (msg.sender == 'Tu') {
@@ -78,8 +97,10 @@ class _ChatPageState extends State<ChatPage> {
     }
     _chat = _model.startChat(history: history);
 
-    // Se chat vuota, invia prompt iniziale del character
     if (loadedMessages.isEmpty && widget.character.prompt.trim().isNotEmpty) {
+      // Attendi 3 secondi solo al primo avvio di una chat vuota
+      await Future.delayed(const Duration(seconds: 3));
+
       final geminiResponse = await _chat.sendMessage(
         Content.text(widget.character.prompt.trim()),
       );
@@ -89,7 +110,6 @@ class _ChatPageState extends State<ChatPage> {
         text: aiContent,
         timestamp: DateTime.now(),
       );
-      // Usa nuovo metodo che preserva characterId
       await firestoreService.addMessagePreservingCharacter(
         uid: currentUserId!,
         chatId: chatId,
@@ -99,12 +119,13 @@ class _ChatPageState extends State<ChatPage> {
       loadedMessages.add(aiMessage);
     }
 
+    // A fine processo, aggiorna la UI e disattiva la schermata di caricamento.
     if (mounted) {
       setState(() {
         messages = loadedMessages;
+        _isInitializing = false;
       });
-      WidgetsBinding.instance
-          .addPostFrameCallback((_) => _scrollToBottom());
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     }
   }
 
@@ -113,7 +134,7 @@ class _ChatPageState extends State<ChatPage> {
     if (text.isEmpty) return;
     if (currentUserId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Devi essere autenticato per inviare')),
+        const SnackBar(content: Text('Devi essere autenticato per inviare messaggi')),
       );
       return;
     }
@@ -129,25 +150,26 @@ class _ChatPageState extends State<ChatPage> {
     });
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 
-    // Invia messaggio e aggiorna chat preservando characterId
     await firestoreService.addMessagePreservingCharacter(
       uid: currentUserId!,
       chatId: chatId,
       characterId: widget.character.id,
       message: userMessage,
     );
-    // Chiedi al modello AI
+
     final geminiResponse = await _chat.sendMessage(Content.text(text));
     final aiReply = geminiResponse.text;
     final aiMessage = MessageModel(
       sender: widget.character.name,
-      text: aiReply ?? "Non ho capito, puoi ripetere?",
+      text: aiReply ?? "Scusa, non ho capito. Puoi ripetere?",
       timestamp: DateTime.now(),
     );
-    setState(() {
-      messages.add(aiMessage);
-      _isTyping = false;
-    });
+    if(mounted) {
+      setState(() {
+        messages.add(aiMessage);
+        _isTyping = false;
+      });
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     await firestoreService.addMessagePreservingCharacter(
       uid: currentUserId!,
@@ -197,9 +219,7 @@ class _ChatPageState extends State<ChatPage> {
       bottomLeft: Radius.circular(isUser ? 16 : 0),
       bottomRight: Radius.circular(isUser ? 0 : 16),
     );
-    final triangle = CustomPaint(
-      painter: BubbleTailPainter(color: bubbleColor, isUser: isUser),
-    );
+    final triangle = CustomPaint(painter: BubbleTailPainter(color: bubbleColor, isUser: isUser));
     return Row(
       mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -209,18 +229,8 @@ class _ChatPageState extends State<ChatPage> {
           child: Container(
             margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: bubbleColor,
-              borderRadius: borderRadius,
-            ),
-            child: Text(
-              msg.text,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                height: 1.4,
-              ),
-            ),
+            decoration: BoxDecoration(color: bubbleColor, borderRadius: borderRadius),
+            child: Text(msg.text, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.4)),
           ),
         ),
         if (isUser) triangle,
@@ -249,10 +259,11 @@ class _ChatPageState extends State<ChatPage> {
                     Positioned.fill(
                       child: IgnorePointer(child: _cachedBackgroundImage),
                     ),
-                    Padding(
-                      padding: EdgeInsets.only(
-                        bottom: MediaQuery.of(context).viewInsets.bottom,
-                      ),
+                    // Logica condizionale per mostrare il caricamento o la chat
+                    _isInitializing
+                        ? const Center(child: CircularProgressIndicator(color: Colors.redAccent))
+                        : Padding(
+                      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
                       child: Column(
                         children: [
                           Expanded(
@@ -267,53 +278,37 @@ class _ChatPageState extends State<ChatPage> {
                                   child: ListView.builder(
                                     controller: _scrollController,
                                     padding: const EdgeInsets.all(10),
-                                    itemCount:
-                                    messages.length + (_isTyping ? 1 : 0),
+                                    itemCount: messages.length + (_isTyping ? 1 : 0),
                                     itemBuilder: (context, index) {
                                       if (index < messages.length) {
                                         final msg = messages[index];
                                         final isUser = msg.sender == 'Tu';
                                         return _buildMessageBubble(msg, isUser);
                                       } else {
-                                        // typing indicator
                                         return Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 12.0, vertical: 6),
+                                          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6),
                                           child: Row(
-                                            crossAxisAlignment:
-                                            CrossAxisAlignment.end,
+                                            crossAxisAlignment: CrossAxisAlignment.end,
                                             children: [
                                               CustomPaint(
                                                 painter: BubbleTailPainter(
-                                                  color: Colors.grey.shade900
-                                                      .withAlpha(217),
+                                                  color: Colors.grey.shade900.withAlpha(217),
                                                   isUser: false,
                                                 ),
                                               ),
                                               Flexible(
                                                 child: Container(
-                                                  margin:
-                                                  const EdgeInsets.symmetric(
-                                                      vertical: 4,
-                                                      horizontal: 6),
-                                                  padding:
-                                                  const EdgeInsets.all(12),
+                                                  margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+                                                  padding: const EdgeInsets.all(12),
                                                   decoration: BoxDecoration(
-                                                    color: Colors.grey
-                                                        .shade900
-                                                        .withAlpha(217),
-                                                    borderRadius:
-                                                    const BorderRadius.only(
-                                                      topLeft:
-                                                      Radius.circular(16),
-                                                      topRight:
-                                                      Radius.circular(16),
-                                                      bottomRight:
-                                                      Radius.circular(16),
+                                                    color: Colors.grey.shade900.withAlpha(217),
+                                                    borderRadius: const BorderRadius.only(
+                                                      topLeft: Radius.circular(16),
+                                                      topRight: Radius.circular(16),
+                                                      bottomRight: Radius.circular(16),
                                                     ),
                                                   ),
-                                                  child:
-                                                  const TypingIndicator(),
+                                                  child: const TypingIndicator(),
                                                 ),
                                               ),
                                             ],
@@ -326,29 +321,27 @@ class _ChatPageState extends State<ChatPage> {
                               },
                             ),
                           ),
+                          // Barra di input
                           Container(
                             color: Colors.black.withAlpha(230),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                             child: Row(
                               children: [
                                 Expanded(
                                   child: TextField(
                                     controller: _messageController,
-                                    style:
-                                    const TextStyle(color: Colors.white),
+                                    style: const TextStyle(color: Colors.white),
                                     decoration: const InputDecoration(
                                       hintText: 'Scrivi un messaggio...',
                                       hintStyle: TextStyle(color: Colors.grey),
                                       border: InputBorder.none,
                                     ),
-                                    onSubmitted: (_) => _sendMessage(),
+                                    onSubmitted: hasConnection ? (_) => _sendMessage() : null,
                                   ),
                                 ),
                                 IconButton(
-                                  icon:
-                                  const Icon(Icons.send, color: Colors.white),
-                                  onPressed: _sendMessage,
+                                  icon: const Icon(Icons.send, color: Colors.white),
+                                  onPressed: hasConnection ? _sendMessage : null,
                                 ),
                               ],
                             ),
@@ -359,6 +352,7 @@ class _ChatPageState extends State<ChatPage> {
                   ],
                 ),
               ),
+              // Overlay per la connessione assente
               if (!hasConnection)
                 Positioned.fill(
                   child: AbsorbPointer(
@@ -369,14 +363,12 @@ class _ChatPageState extends State<ChatPage> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.wifi_off,
-                                color: Colors.redAccent, size: 50),
+                            Icon(Icons.wifi_off, color: Colors.redAccent, size: 50),
                             SizedBox(height: 16),
                             Text(
-                              'Connection absent.\nCheck the network and try again.',
+                              'Connessione assente.\nControlla la rete e riprova.',
                               textAlign: TextAlign.center,
-                              style:
-                              TextStyle(color: Colors.white, fontSize: 16),
+                              style: TextStyle(color: Colors.white, fontSize: 16),
                             ),
                           ],
                         ),
@@ -392,7 +384,6 @@ class _ChatPageState extends State<ChatPage> {
   }
 }
 
-// CustomPainter già nel tuo codice
 class BubbleTailPainter extends CustomPainter {
   final Color color;
   final bool isUser;
@@ -403,7 +394,6 @@ class BubbleTailPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..color = color;
     final path = Path();
-
     if (isUser) {
       path.moveTo(0, size.height - 12);
       path.lineTo(size.width, size.height - 6);
@@ -419,4 +409,6 @@ class BubbleTailPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
+
+  Size get size => const Size(10, 12);
 }
