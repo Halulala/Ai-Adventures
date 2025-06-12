@@ -1,16 +1,32 @@
-# progetto
+# AI Adventure - Intelligent Dungeon Master Chatbot
 
-A new Flutter project.
+## Project Overview
 
-## Getting Started
+**AI Adventure** is a mobile application developed as part of a university project. The app simulates a text-based role-playing game (RPG) environment, where an artificial intelligence system takes on the role of a Dungeon Master (DM). Users can create characters, interact with multiple NPCs (non-player characters), and engage in dynamic narrative scenarios generated through AI-driven dialogue.
 
-This project is a starting point for a Flutter application.
+---
 
-A few resources to get you started if this is your first Flutter project:
+## Objectives
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- Simulate a role-playing adventure through conversational interaction
+- Leverage AI to dynamically generate narrative content and character responses
+- Allow users to create custom characters and interact with multiple virtual entities
+- Explore the use of Flutter and Firebase in developing cross-platform applications
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+---
+
+## Features
+
+- Interactive chat interface with an AI Dungeon Master
+- Character creation and customization
+- Real-time communication using a structured conversation flow
+- Integration with Firebase services (Authentication, Firestore)
+- Using gemini free model
+
+---
+
+## Technologies Used
+
+- **Flutter**: Frontend cross-platform framework (Dart)
+- **Firebase**: Backend as a service (Auth, Firestore)
+- **OpenAI API**: For AI-driven conversational generation
