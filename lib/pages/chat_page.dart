@@ -6,6 +6,8 @@ import '../models/character_model.dart';
 import '../models/chat_model.dart';
 import '../services/firestore_service.dart';
 import '../widgets/chat/typing_indicator.dart';
+import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
+
 
 const Color _backgroundImageOverlayColor = Colors.black54;
 
@@ -37,6 +39,9 @@ class _ChatPageState extends State<ChatPage> {
     _cachedBackgroundImage = _buildImageFromBase64(widget.character.imagePath);
     chatId = '${widget.character.id}';
 
+    // NOTA IMPORTANTE: La tua chiave API è visibile qui. Questo non è sicuro per un'app
+    // di produzione. Considera l'uso di variabili d'ambiente o di un servizio
+    // di backend per proteggerla e non esporla mai nel codice client.
     _model = GenerativeModel(
       model: 'gemini-1.5-flash',
       apiKey: 'AIzaSyA5o1ANvM0eBZsYxzCTw7X7JogudVl4lj0',
@@ -134,8 +139,7 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget _buildImageFromBase64(String base64String) {
-    // Definisci un colore di sfondo scuro di fallback
-    const Color fallbackBackgroundColor = Color(0xFF121212); // Nero leggermente schiarito
+    const Color fallbackBackgroundColor = Color(0xFF121212);
 
     if (base64String.isEmpty) {
       return Container(
@@ -146,13 +150,12 @@ class _ChatPageState extends State<ChatPage> {
     try {
       Uint8List bytes = base64Decode(base64String);
       return Stack(
+        fit: StackFit.expand,
         children: [
-          // Immagine decodificata
           Image.memory(
             bytes,
             fit: BoxFit.cover,
           ),
-          // Sovrapposizione scura per migliorare la leggibilità del testo
           Container(
             color: _backgroundImageOverlayColor,
           ),
@@ -168,8 +171,8 @@ class _ChatPageState extends State<ChatPage> {
 
   Widget _buildMessageBubble(MessageModel msg, bool isUser) {
     final bubbleColor = isUser
-        ? Colors.blueAccent.withOpacity(0.9)
-        : Colors.grey.shade900.withOpacity(0.85);
+        ? Colors.blueAccent.withAlpha(230) // Equivalente a .withOpacity(0.9)
+        : Colors.grey.shade900.withAlpha(217); // Equivalente a .withOpacity(0.85)
 
     final borderRadius = BorderRadius.only(
       topLeft: const Radius.circular(16),
@@ -214,91 +217,114 @@ class _ChatPageState extends State<ChatPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Impedisce allo Scaffold di ridimensionarsi quando appare la tastiera,
+      // mantenendo lo sfondo a dimensione intera.
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         title: Text(widget.character.name),
         backgroundColor: Colors.black87,
       ),
       body: Stack(
         children: [
-          Positioned.fill(child: _cachedBackgroundImage),
-          Column(
-            children: [
-              Expanded(
-                child: ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(10),
-                  itemCount: messages.length + (_isTyping ? 1 : 0), // +1 per il typing
-                  itemBuilder: (context, index) {
-                    if (index < messages.length) {
-                      final msg = messages[index];
-                      final isUser = msg.sender == 'Tu';
-                      return _buildMessageBubble(msg, isUser);
-                    } else {
-                      // Ultimo elemento: sta scrivendo
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            CustomPaint(
-                              painter: BubbleTailPainter(
-                                color: Colors.grey.shade900.withOpacity(0.85),
-                                isUser: false,
-                              ),
-                            ),
-                            Flexible(
-                              child: Container(
-                                margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade900.withOpacity(0.85),
-                                  borderRadius: const BorderRadius.only(
-                                    topLeft: Radius.circular(16),
-                                    topRight: Radius.circular(16),
-                                    bottomRight: Radius.circular(16),
-                                  ),
+          // Sfondo fisso
+          Positioned.fill(
+            child: IgnorePointer(
+              child: _cachedBackgroundImage,
+            ),
+          ),
+          // Contenuto della UI che si sposta sopra la tastiera
+          Padding(
+            // Aggiunge uno spazio inferiore pari all'altezza della tastiera
+            padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+            child: Column(
+              children: [
+                Expanded(
+                  child: KeyboardVisibilityBuilder(
+                    builder: (context, isKeyboardVisible) {
+                      return GestureDetector(
+                        onTap: () {
+                          if (isKeyboardVisible) {
+                            FocusScope.of(context).unfocus();
+                          }
+                        },
+                        child: ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.all(10),
+                          itemCount: messages.length + (_isTyping ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index < messages.length) {
+                              final msg = messages[index];
+                              final isUser = msg.sender == 'Tu';
+                              return _buildMessageBubble(msg, isUser);
+                            } else {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    CustomPaint(
+                                      painter: BubbleTailPainter(
+                                        color: Colors.grey.shade900.withAlpha(217),
+                                        isUser: false,
+                                      ),
+                                    ),
+                                    Flexible(
+                                      child: Container(
+                                        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.shade900.withAlpha(217),
+                                          borderRadius: const BorderRadius.only(
+                                            topLeft: Radius.circular(16),
+                                            topRight: Radius.circular(16),
+                                            bottomRight: Radius.circular(16),
+                                          ),
+                                        ),
+                                        child: const TypingIndicator(),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                child: const TypingIndicator(),
-                              ),
-                            ),
-                          ],
+                              );
+                            }
+                          },
                         ),
                       );
-                    }
-                  },
+                    },
+                  ),
                 ),
-              ),
-              Container(
-                color: Colors.black.withOpacity(0.9),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _messageController,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(
-                          hintText: 'Scrivi un messaggio...',
-                          hintStyle: TextStyle(color: Colors.grey),
-                          border: InputBorder.none,
+                // Barra di input del messaggio
+                Container(
+                  color: Colors.black.withAlpha(230),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _messageController,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: const InputDecoration(
+                            hintText: 'Scrivi un messaggio...',
+                            hintStyle: TextStyle(color: Colors.grey),
+                            border: InputBorder.none,
+                          ),
+                          onSubmitted: (_) => _sendMessage(),
                         ),
-                        onSubmitted: (_) => _sendMessage(),
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.send, color: Colors.white),
-                      onPressed: _sendMessage,
-                    ),
-                  ],
+                      IconButton(
+                        icon: const Icon(Icons.send, color: Colors.white),
+                        onPressed: _sendMessage,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
     );
   }
-
 }
 
 class BubbleTailPainter extends CustomPainter {
