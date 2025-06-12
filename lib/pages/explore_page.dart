@@ -209,7 +209,11 @@ class _ExplorePageState extends State<ExplorePage> {
                   future: _charactersFuture,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          color: Colors.redAccent,
+                        ),
+                      );
                     } else if (snapshot.hasError) {
                       return Center(child: Text('Error: ${snapshot.error}'));
                     } else if (!snapshot.hasData || snapshot.data!.isEmpty) {

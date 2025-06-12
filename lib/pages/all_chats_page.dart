@@ -85,6 +85,7 @@ class _AllChatsPageState extends State<AllChatsPage> {
           'name': chat.characterName,
           'message': chat.lastMessage,
           'unreadCount': chat.unread ? '1' : '0',
+          'imagePath': character.imagePath,
         },
         isFavorite: chat.isFavorite,
         onAddToFavorites: () async {

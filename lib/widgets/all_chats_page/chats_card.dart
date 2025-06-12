@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 class ChatCard extends StatelessWidget {
@@ -32,10 +34,21 @@ class ChatCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              const CircleAvatar(
-                backgroundColor: Colors.purple,
-                child: Icon(Icons.android, color: Colors.black),
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: Colors.white,
+                backgroundImage: chat['imagePath'] != null &&
+                    chat['imagePath']!.isNotEmpty
+                    ? _getImageProvider(chat['imagePath']!)
+                    : null, // Sfondo neutro
+                child: chat['imagePath'] != null &&
+                    chat['imagePath']!.isNotEmpty &&
+                    _getImageProvider(chat['imagePath']!) != null
+                    ? null // Se c'è un'immagine valida, la mostreremo sotto
+                    : const Icon(Icons.person, color: Colors.grey),
               ),
+
+
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -76,4 +89,22 @@ class ChatCard extends StatelessWidget {
       ),
     );
   }
+  ImageProvider? _getImageProvider(String imagePath) {
+    if (imagePath.startsWith('assets/')) {
+      return null; // Evitiamo asset images come fallback
+    }
+
+    try {
+      final parts = imagePath.split(',');
+      final base64Data = parts.length > 1 ? parts.last : imagePath;
+      final bytes = base64Decode(base64Data);
+      return MemoryImage(bytes);
+    } catch (_) {
+      return null; // Se fallisce il decode, non ritorniamo nulla
+    }
+  }
+
+
+
+
 }

@@ -15,6 +15,7 @@ class FirestoreService {
     }).toList();
   }
 
+  /// Recupera il profilo utente, ora compreso di imageBase64
   Future<UserModel?> getUserProfile(String uid) async {
     try {
       final doc = await _firestore.collection('users').doc(uid).get();
@@ -27,10 +28,33 @@ class FirestoreService {
     }
   }
 
+  /// Aggiorna solo il nickname
   Future<void> updateNickname(String uid, String newNickname) async {
     await _firestore.collection('users').doc(uid).update({
       'nickname': newNickname,
     });
+  }
+
+  // --- NUOVO: aggiorna avatar in Base64 ---
+  Future<void> updateUserAvatar(String uid, String base64Image) async {
+    // Salva/aggiorna il campo 'imageBase64' nel documento utente
+    await _firestore.collection('users').doc(uid).update({
+      'imageBase64': base64Image,
+    });
+  }
+
+  /// Opzionale: recupera solo l’avatar (stringa Base64)
+  Future<String?> getUserAvatar(String uid) async {
+    try {
+      final doc = await _firestore.collection('users').doc(uid).get();
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data()!;
+        return data['imageBase64'] as String?;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
   }
 
   Future<List<CharacterModel>> getAllCharacters() async {

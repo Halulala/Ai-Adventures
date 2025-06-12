@@ -134,30 +134,34 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget _buildImageFromBase64(String base64String) {
+    // Definisci un colore di sfondo scuro di fallback
+    const Color fallbackBackgroundColor = Color(0xFF121212); // Nero leggermente schiarito
+
     if (base64String.isEmpty) {
-      return Image.asset(
-        'assets/images/720x1280.png',
-        fit: BoxFit.cover,
-        color: _backgroundImageOverlayColor,
-        colorBlendMode: BlendMode.darken,
+      return Container(
+        color: fallbackBackgroundColor,
       );
     }
 
     try {
       Uint8List bytes = base64Decode(base64String);
-      return Image.memory(
-        bytes,
-        fit: BoxFit.cover,
-        color: _backgroundImageOverlayColor,
-        colorBlendMode: BlendMode.darken,
+      return Stack(
+        children: [
+          // Immagine decodificata
+          Image.memory(
+            bytes,
+            fit: BoxFit.cover,
+          ),
+          // Sovrapposizione scura per migliorare la leggibilità del testo
+          Container(
+            color: _backgroundImageOverlayColor,
+          ),
+        ],
       );
     } catch (e) {
       debugPrint('Errore decodifica immagine Base64: $e');
-      return Image.asset(
-        'assets/images/720x1280.png',
-        fit: BoxFit.cover,
-        color: _backgroundImageOverlayColor,
-        colorBlendMode: BlendMode.darken,
+      return Container(
+        color: fallbackBackgroundColor,
       );
     }
   }
